@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "851756182602",
+    "project_id": "yuvavigyan",
+    "storage_bucket": "yuvavigyan.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:851756182602:android:b10c90cf76e619a5bd8ab3",
+        "android_client_info": {
+          "package_name": "com.example.yuvavigyan"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDlMs3hMtAzF0NN3ivEpT0TH1AX8WW8Vww"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
