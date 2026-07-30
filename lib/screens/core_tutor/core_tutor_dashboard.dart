@@ -44,7 +44,7 @@ class _CoreTutorDashboardState extends State<CoreTutorDashboard> {
           BottomNavigationBarItem(icon: Icon(Icons.book), label: "Courses"),
           BottomNavigationBarItem(icon: Icon(Icons.video_library), label: "Videos"),
           BottomNavigationBarItem(icon: Icon(Icons.picture_as_pdf), label: "Materials"),
-          BottomNavigationBarItem(icon: Icon(Icons.quiz), label: "Questions"),
+          BottomNavigationBarItem(icon: Icon(Icons.quiz), label: "Tests"),
         ],
       ),
     );
@@ -65,7 +65,7 @@ class CoreHomePage extends StatelessWidget {
         DashboardCard(title: "Total Courses", value: "0", icon: Icons.book),
         DashboardCard(title: "Videos", value: "0", icon: Icons.video_library),
         DashboardCard(title: "Materials", value: "0", icon: Icons.picture_as_pdf),
-        DashboardCard(title: "Questions", value: "0", icon: Icons.quiz),
+        DashboardCard(title: "Tests", value: "0", icon: Icons.quiz),
       ],
     );
   }
