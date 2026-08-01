@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-// Ensure this path matches your widgets folder
-import '../../widgets/dashboard_card.dart'; 
+import '../../widgets/dashboard_card.dart';
 
 class CoreTutorDashboard extends StatefulWidget {
   const CoreTutorDashboard({super.key});
@@ -39,11 +38,26 @@ class _CoreTutorDashboardState extends State<CoreTutorDashboard> {
           });
         },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.book), label: "Courses"),
-          BottomNavigationBarItem(icon: Icon(Icons.video_library), label: "Videos"),
-          BottomNavigationBarItem(icon: Icon(Icons.picture_as_pdf), label: "Materials"),
-          BottomNavigationBarItem(icon: Icon(Icons.quiz), label: "Questions"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: "Home",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.book),
+            label: "Courses",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.video_library),
+            label: "Videos",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.picture_as_pdf),
+            label: "Materials",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.quiz),
+            label: "Tests",
+          ),
         ],
       ),
     );
@@ -51,7 +65,7 @@ class _CoreTutorDashboardState extends State<CoreTutorDashboard> {
 }
 
 ////////////////////////////////////////////////////
-/// ✅ HOME PAGE WITH CLICKABLE SMALL CARDS
+/// HOME PAGE
 ////////////////////////////////////////////////////
 
 class CoreHomePage extends StatelessWidget {
@@ -62,22 +76,49 @@ class CoreHomePage extends StatelessWidget {
     return GridView.count(
       padding: const EdgeInsets.all(20),
       crossAxisCount: 2,
-      childAspectRatio: 1.5, 
+      childAspectRatio: 1.5,
       crossAxisSpacing: 15,
       mainAxisSpacing: 15,
       children: [
-        _buildClickCard(context, Icons.book, "Manage Courses", 1),
-        _buildClickCard(context, Icons.video_library, "Upload Videos", 2),
-        _buildClickCard(context, Icons.picture_as_pdf, "Study Materials", 3),
-        _buildClickCard(context, Icons.quiz, "Question Bank", 4),
+        _buildClickCard(
+          context,
+          Icons.book,
+          "Total Courses",
+          1,
+        ),
+        _buildClickCard(
+          context,
+          Icons.video_library,
+          "Videos",
+          2,
+        ),
+        _buildClickCard(
+          context,
+          Icons.picture_as_pdf,
+          "Materials",
+          3,
+        ),
+        _buildClickCard(
+          context,
+          Icons.quiz,
+          "Tests",
+          4,
+        ),
       ],
     );
   }
 
-  Widget _buildClickCard(BuildContext context, IconData icon, String text, int pageIndex) {
+  Widget _buildClickCard(
+    BuildContext context,
+    IconData icon,
+    String text,
+    int pageIndex,
+  ) {
     return InkWell(
       onTap: () {
-        final parent = context.findAncestorStateOfType<_CoreTutorDashboardState>();
+        final parent =
+            context.findAncestorStateOfType<_CoreTutorDashboardState>();
+
         parent?.setState(() {
           parent.index = pageIndex;
         });
@@ -93,7 +134,7 @@ class CoreHomePage extends StatelessWidget {
               spreadRadius: 2,
               blurRadius: 6,
               offset: const Offset(0, 3),
-            )
+            ),
           ],
         ),
         child: Column(
@@ -102,7 +143,11 @@ class CoreHomePage extends StatelessWidget {
             CircleAvatar(
               radius: 25,
               backgroundColor: Colors.blue[50],
-              child: Icon(icon, size: 30, color: Colors.blue),
+              child: Icon(
+                icon,
+                size: 30,
+                color: Colors.blue,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
@@ -122,7 +167,7 @@ class CoreHomePage extends StatelessWidget {
 }
 
 ////////////////////////////////////////////////////
-/// ✅ COURSE PAGE
+/// COURSE PAGE
 ////////////////////////////////////////////////////
 
 class CoursePage extends StatelessWidget {
@@ -145,11 +190,18 @@ class CoursePage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.inbox_outlined, size: 60, color: Colors.grey),
+            const Icon(
+              Icons.inbox_outlined,
+              size: 60,
+              color: Colors.grey,
+            ),
             const SizedBox(height: 20),
             const Text(
               "No courses created yet.",
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey,
+              ),
             ),
           ],
         ),
@@ -157,6 +209,10 @@ class CoursePage extends StatelessWidget {
     );
   }
 }
+
+////////////////////////////////////////////////////
+/// ADD COURSE DIALOG
+////////////////////////////////////////////////////
 
 class AddCourseDialog extends StatefulWidget {
   const AddCourseDialog({super.key});
@@ -166,8 +222,18 @@ class AddCourseDialog extends StatefulWidget {
 }
 
 class _AddCourseDialogState extends State<AddCourseDialog> {
-  final TextEditingController titleController = TextEditingController();
-  final TextEditingController syllabusController = TextEditingController();
+  final TextEditingController titleController =
+      TextEditingController();
+
+  final TextEditingController syllabusController =
+      TextEditingController();
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    syllabusController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -197,22 +263,33 @@ class _AddCourseDialogState extends State<AddCourseDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Cancel"),
+        ),
         ElevatedButton(
           onPressed: () {
-            print("Course Created: ${titleController.text}");
+            print(
+              "Course Created: ${titleController.text}",
+            );
+
             Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Course Created!")));
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Course Created!"),
+              ),
+            );
           },
           child: const Text("Create"),
-        )
+        ),
       ],
     );
   }
 }
 
 ////////////////////////////////////////////////////
-/// ✅ VIDEO PAGE (FIXED FOR V6.1.1)
+/// VIDEO PAGE
 ////////////////////////////////////////////////////
 
 class VideoPage extends StatefulWidget {
@@ -227,8 +304,8 @@ class _VideoPageState extends State<VideoPage> {
 
   Future<void> pickVideo() async {
     try {
-      // Correct syntax for v6.1.1
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      FilePickerResult? result =
+          await FilePicker.platform.pickFiles(
         type: FileType.video,
         allowMultiple: false,
       );
@@ -237,37 +314,82 @@ class _VideoPageState extends State<VideoPage> {
         setState(() {
           selectedFileName = result.files.single.name;
         });
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Selected: $selectedFileName")),
+          SnackBar(
+            content: Text(
+              "Selected: $selectedFileName",
+            ),
+          ),
         );
       } else {
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No file selected")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("No file selected"),
+          ),
+        );
       }
     } catch (e) {
       print("Error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error picking file.")));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Error picking file."),
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Upload Videos")),
-      floatingActionButton: FloatingActionButton(onPressed: pickVideo, child: const Icon(Icons.upload)),
+      appBar: AppBar(
+        title: const Text("Upload Videos"),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: pickVideo,
+        child: const Icon(Icons.upload),
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (selectedFileName != null) ...[
-              const Icon(Icons.check_circle_outline, color: Colors.green, size: 50),
+              const Icon(
+                Icons.check_circle_outline,
+                color: Colors.green,
+                size: 50,
+              ),
               const SizedBox(height: 15),
-              Text("Ready to upload:", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                "Ready to upload:",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 5),
-              Text(selectedFileName!, style: const TextStyle(fontSize: 16, color: Colors.blue)),
+              Text(
+                selectedFileName!,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.blue,
+                ),
+              ),
             ] else ...[
-              const Icon(Icons.videocam_outlined, size: 80, color: Colors.grey),
+              const Icon(
+                Icons.videocam_outlined,
+                size: 80,
+                color: Colors.grey,
+              ),
               const SizedBox(height: 20),
-              const Text("Tap the button to select a video.", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+              const Text(
+                "Tap the button to select a video.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey,
+                ),
+              ),
             ],
           ],
         ),
@@ -277,7 +399,7 @@ class _VideoPageState extends State<VideoPage> {
 }
 
 ////////////////////////////////////////////////////
-/// ✅ MATERIAL PAGE (FIXED FOR V6.1.1)
+/// MATERIAL PAGE
 ////////////////////////////////////////////////////
 
 class MaterialPage extends StatefulWidget {
@@ -292,8 +414,8 @@ class _MaterialPageState extends State<MaterialPage> {
 
   Future<void> pickFile() async {
     try {
-      // Correct syntax for v6.1.1
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      FilePickerResult? result =
+          await FilePicker.platform.pickFiles(
         type: FileType.any,
         allowMultiple: false,
       );
@@ -302,37 +424,82 @@ class _MaterialPageState extends State<MaterialPage> {
         setState(() {
           selectedFileName = result.files.single.name;
         });
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Selected: $selectedFileName")),
+          SnackBar(
+            content: Text(
+              "Selected: $selectedFileName",
+            ),
+          ),
         );
       } else {
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No file selected")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("No file selected"),
+          ),
+        );
       }
     } catch (e) {
       print("Error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error picking file.")));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Error picking file."),
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Upload Materials")),
-      floatingActionButton: FloatingActionButton(onPressed: pickFile, child: const Icon(Icons.upload_file)),
+      appBar: AppBar(
+        title: const Text("Upload Materials"),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: pickFile,
+        child: const Icon(Icons.upload_file),
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (selectedFileName != null) ...[
-              const Icon(Icons.insert_drive_file, color: Colors.orange, size: 50),
+              const Icon(
+                Icons.insert_drive_file,
+                color: Colors.orange,
+                size: 50,
+              ),
               const SizedBox(height: 15),
-              Text("Ready to upload:", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                "Ready to upload:",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 5),
-              Text(selectedFileName!, style: const TextStyle(fontSize: 16, color: Colors.orange)),
+              Text(
+                selectedFileName!,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.orange,
+                ),
+              ),
             ] else ...[
-              const Icon(Icons.folder_open, size: 80, color: Colors.grey),
+              const Icon(
+                Icons.folder_open,
+                size: 80,
+                color: Colors.grey,
+              ),
               const SizedBox(height: 20),
-              const Text("Tap the button to select a PDF or material.", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+              const Text(
+                "Tap the button to select a PDF or material.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey,
+                ),
+              ),
             ],
           ],
         ),
@@ -342,7 +509,7 @@ class _MaterialPageState extends State<MaterialPage> {
 }
 
 ////////////////////////////////////////////////////
-/// ✅ QUESTION BANK PAGE
+/// QUESTION BANK / TESTS PAGE
 ////////////////////////////////////////////////////
 
 class QuestionBankPage extends StatelessWidget {
@@ -351,13 +518,28 @@ class QuestionBankPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Question Bank")),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Coming soon"))),
-        icon: const Icon(Icons.add),
-        label: const Text("Add Question"),
+      appBar: AppBar(
+        title: const Text("Tests"),
       ),
-      body: const Center(child: Text("Question bank is empty.", style: TextStyle(color: Colors.grey))),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Coming soon"),
+            ),
+          );
+        },
+        icon: const Icon(Icons.add),
+        label: const Text("Add Test"),
+      ),
+      body: const Center(
+        child: Text(
+          "Test bank is empty.",
+          style: TextStyle(
+            color: Colors.grey,
+          ),
+        ),
+      ),
     );
   }
 }
