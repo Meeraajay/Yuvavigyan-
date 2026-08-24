@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'widgets/action_button_card.dart';
+import '../evaluation_form_page.dart';
+import '../attendance_page.dart';
+import '../feedback_page.dart';
 
 class StudentDetailsPage extends StatelessWidget {
   const StudentDetailsPage({super.key});
@@ -17,7 +20,10 @@ class StudentDetailsPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            /// Student Profile
+            // ============================================================
+            // STUDENT PROFILE
+            // ============================================================
+
             Card(
               elevation: 3,
               shape: RoundedRectangleBorder(
@@ -58,7 +64,7 @@ class StudentDetailsPage extends StatelessWidget {
 
                         Text("Batch : YUVAVIJNAN 2026"),
                       ],
-                    )
+                    ),
                   ],
                 ),
               ),
@@ -66,7 +72,10 @@ class StudentDetailsPage extends StatelessWidget {
 
             const SizedBox(height: 25),
 
-            /// Current Session
+            // ============================================================
+            // CURRENT SESSION
+            // ============================================================
+
             const Text(
               "Current Session",
               style: TextStyle(
@@ -87,7 +96,10 @@ class StudentDetailsPage extends StatelessWidget {
 
             const SizedBox(height: 25),
 
-            /// Progress
+            // ============================================================
+            // LEARNING PROGRESS
+            // ============================================================
+
             const Text(
               "Learning Progress",
               style: TextStyle(
@@ -114,7 +126,9 @@ class StudentDetailsPage extends StatelessWidget {
 
                     const Align(
                       alignment: Alignment.centerLeft,
-                      child: Text("8 of 10 Sessions Completed"),
+                      child: Text(
+                        "8 of 10 Sessions Completed",
+                      ),
                     ),
                   ],
                 ),
@@ -123,7 +137,10 @@ class StudentDetailsPage extends StatelessWidget {
 
             const SizedBox(height: 25),
 
-            /// Study Material
+            // ============================================================
+            // STUDY MATERIAL STATUS
+            // ============================================================
+
             const Text(
               "Study Material Status",
               style: TextStyle(
@@ -139,31 +156,42 @@ class StudentDetailsPage extends StatelessWidget {
                 children: const [
 
                   ListTile(
-                    leading: Icon(Icons.check_circle,color: Colors.green),
+                    leading: Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                    ),
                     title: Text("Video Viewed"),
                   ),
 
                   Divider(height: 1),
 
                   ListTile(
-                    leading: Icon(Icons.check_circle,color: Colors.green),
+                    leading: Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                    ),
                     title: Text("Notes Viewed"),
                   ),
 
                   Divider(height: 1),
 
                   ListTile(
-                    leading: Icon(Icons.cancel,color: Colors.red),
+                    leading: Icon(
+                      Icons.cancel,
+                      color: Colors.red,
+                    ),
                     title: Text("Practice Activity Pending"),
                   ),
-
                 ],
               ),
             ),
 
             const SizedBox(height: 25),
 
-            /// Tutor Actions
+            // ============================================================
+            // TUTOR ACTIONS
+            // ============================================================
+
             const Text(
               "Tutor Actions",
               style: TextStyle(
@@ -174,29 +202,61 @@ class StudentDetailsPage extends StatelessWidget {
 
             const SizedBox(height: 15),
 
+            // ============================================================
+            // MARK ATTENDANCE
+            // ============================================================
+
             ActionButtonCard(
               icon: Icons.how_to_reg,
               title: "Mark Attendance",
               color: Colors.green,
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AttendancePage(),
+                  ),
+                );
+              },
             ),
+
+            // ============================================================
+            // EVALUATE ASSESSMENT
+            // ============================================================
 
             ActionButtonCard(
               icon: Icons.assignment_turned_in,
               title: "Evaluate Assessment",
               color: Colors.orange,
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const EvaluationFormPage(),
+                  ),
+                );
+              },
             ),
+
+            // ============================================================
+            // GIVE FEEDBACK
+            // ============================================================
 
             ActionButtonCard(
               icon: Icons.feedback,
               title: "Give Feedback",
               color: Colors.deepPurple,
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const FeedbackPage(),
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 25),
-
           ],
         ),
       ),
