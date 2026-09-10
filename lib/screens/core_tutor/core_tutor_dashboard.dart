@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../widgets/dashboard_card.dart';
+import '../../services/cloudinary_service.dart';
 
 class CoreTutorDashboard extends StatefulWidget {
   const CoreTutorDashboard({super.key});
@@ -569,17 +570,45 @@ class _VideoUploadPageState extends State<VideoUploadPage> {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.video,
         allowMultiple: false,
+        withData: true,
       );
 
       if (result != null) {
-        setState(() {
-          selectedFileName = result.files.single.name;
-        });
+  final file = result.files.single;
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Selected: $selectedFileName")),
-        );
-      } else {
+  if (file.bytes == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Could not read the video file.")),
+    );
+    return;
+  }
+
+  setState(() {
+    selectedFileName = file.name;
+  });
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text("Uploading video...")),
+  );
+
+  final url = await CloudinaryService.uploadFile(
+    fileBytes: file.bytes!,
+    fileName: file.name,
+    resourceType: 'video',
+  );
+
+  if (url != null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Video uploaded successfully!")),
+    );
+
+    print("Cloudinary Video URL: $url");
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Video upload failed.")),
+    );
+  }
+} else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("No file selected")),
         );
