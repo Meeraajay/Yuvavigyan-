@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'widgets/action_button_card.dart';
 import '../evaluation_form_page.dart';
 import '../attendance_page.dart';
-import '../feedback_page.dart';
+import '../application_form_page.dart';
 
 class StudentDetailsPage extends StatelessWidget {
   const StudentDetailsPage({super.key});
@@ -20,61 +20,63 @@ class StudentDetailsPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            // ============================================================
+            // ------------------------------------------------------------
             // STUDENT PROFILE
-            // ============================================================
+            // ------------------------------------------------------------
 
-            Card(
-              elevation: 3,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
+            const Text(
+              "Student Profile",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
+            ),
 
-                    CircleAvatar(
-                      radius: 35,
-                      backgroundColor: Colors.deepPurple.shade50,
-                      child: const Icon(
-                        Icons.person,
-                        size: 35,
-                        color: Colors.deepPurple,
-                      ),
+            const SizedBox(height: 15),
+
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.deepPurple.shade50,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: const Row(
+                children: [
+                  CircleAvatar(
+                    radius: 35,
+                    child: Icon(
+                      Icons.person,
+                      size: 35,
                     ),
+                  ),
 
-                    const SizedBox(width: 20),
+                  SizedBox(width: 15),
 
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-
-                        Text(
-                          "Lakshmi Amma",
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Lakshmi Amma",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
-
-                        SizedBox(height: 5),
-
-                        Text("Age : 68"),
-
-                        Text("Batch : YUVAVIJNAN 2026"),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                      SizedBox(height: 5),
+                      Text("Age: 68"),
+                      Text("Batch: YUVAVIJNAN 2026"),
+                    ],
+                  ),
+                ],
               ),
             ),
 
             const SizedBox(height: 25),
 
-            // ============================================================
+            // ------------------------------------------------------------
             // CURRENT SESSION
-            // ============================================================
+            // ------------------------------------------------------------
 
             const Text(
               "Current Session",
@@ -84,21 +86,38 @@ class StudentDetailsPage extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.menu_book),
-                title: const Text("Session 4"),
-                subtitle: const Text("Digital Payments"),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.grey.shade300,
+                ),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Session 4",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 17,
+                    ),
+                  ),
+                  SizedBox(height: 5),
+                  Text("Digital Payments"),
+                ],
               ),
             ),
 
             const SizedBox(height: 25),
 
-            // ============================================================
+            // ------------------------------------------------------------
             // LEARNING PROGRESS
-            // ============================================================
+            // ------------------------------------------------------------
 
             const Text(
               "Learning Progress",
@@ -108,38 +127,59 @@ class StudentDetailsPage extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-
-                    LinearProgressIndicator(
-                      value: 0.80,
-                      minHeight: 10,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "8 of 10 Sessions Completed",
-                      ),
-                    ),
-                  ],
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.grey.shade300,
                 ),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    mainAxisAlignment:
+                        MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text("Sessions Completed"),
+                      Text(
+                        "8 / 10",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  LinearProgressIndicator(
+                    value: 0.80,
+                    minHeight: 8,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  const Text(
+                    "80% completed",
+                    style: TextStyle(
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
               ),
             ),
 
             const SizedBox(height: 25),
 
-            // ============================================================
+            // ------------------------------------------------------------
             // STUDY MATERIAL STATUS
-            // ============================================================
+            // ------------------------------------------------------------
 
             const Text(
               "Study Material Status",
@@ -149,38 +189,47 @@ class StudentDetailsPage extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
-            Card(
-              child: Column(
-                children: const [
-
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.grey.shade300,
+                ),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: const Column(
+                children: [
                   ListTile(
+                    contentPadding: EdgeInsets.zero,
                     leading: Icon(
                       Icons.check_circle,
                       color: Colors.green,
                     ),
-                    title: Text("Video Viewed"),
+                    title: Text("Video"),
+                    trailing: Text("Viewed"),
                   ),
 
-                  Divider(height: 1),
-
                   ListTile(
+                    contentPadding: EdgeInsets.zero,
                     leading: Icon(
                       Icons.check_circle,
                       color: Colors.green,
                     ),
-                    title: Text("Notes Viewed"),
+                    title: Text("Notes"),
+                    trailing: Text("Viewed"),
                   ),
 
-                  Divider(height: 1),
-
                   ListTile(
+                    contentPadding: EdgeInsets.zero,
                     leading: Icon(
-                      Icons.cancel,
-                      color: Colors.red,
+                      Icons.pending,
+                      color: Colors.orange,
                     ),
-                    title: Text("Practice Activity Pending"),
+                    title: Text("Practice Activity"),
+                    trailing: Text("Pending"),
                   ),
                 ],
               ),
@@ -188,9 +237,9 @@ class StudentDetailsPage extends StatelessWidget {
 
             const SizedBox(height: 25),
 
-            // ============================================================
+            // ------------------------------------------------------------
             // TUTOR ACTIONS
-            // ============================================================
+            // ------------------------------------------------------------
 
             const Text(
               "Tutor Actions",
@@ -200,12 +249,25 @@ class StudentDetailsPage extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 15),
+            const SizedBox(height: 12),
 
-            // ============================================================
-            // MARK ATTENDANCE
-            // ============================================================
+            // Application Form
+            ActionButtonCard(
+              icon: Icons.description_outlined,
+              title: "Application Form",
+              color: Colors.blue,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        const ApplicationFormPage(),
+                  ),
+                );
+              },
+            ),
 
+            // Attendance
             ActionButtonCard(
               icon: Icons.how_to_reg,
               title: "Mark Attendance",
@@ -220,10 +282,7 @@ class StudentDetailsPage extends StatelessWidget {
               },
             ),
 
-            // ============================================================
-            // EVALUATE ASSESSMENT
-            // ============================================================
-
+            // Evaluation
             ActionButtonCard(
               icon: Icons.assignment_turned_in,
               title: "Evaluate Assessment",
@@ -232,31 +291,30 @@ class StudentDetailsPage extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const EvaluationFormPage(),
+                    builder: (_) =>
+                        const EvaluationFormPage(),
                   ),
                 );
               },
             ),
 
-            // ============================================================
-            // GIVE FEEDBACK
-            // ============================================================
-
+            // Feedback
             ActionButtonCard(
               icon: Icons.feedback,
               title: "Give Feedback",
               color: Colors.deepPurple,
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const FeedbackPage(),
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      "Feedback module is available from the Tutor Dashboard.",
+                    ),
                   ),
                 );
               },
             ),
 
-            const SizedBox(height: 25),
+            const SizedBox(height: 20),
           ],
         ),
       ),

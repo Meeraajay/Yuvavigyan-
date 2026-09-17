@@ -8,7 +8,12 @@ import 'widgets/activity_section.dart';
 import 'widgets/quick_action_section.dart';
 
 class TutorHomePage extends StatelessWidget {
-  const TutorHomePage({super.key});
+  final void Function(int) onNavigate;
+
+  const TutorHomePage({
+    super.key,
+    required this.onNavigate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -29,12 +34,10 @@ class TutorHomePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Welcome Card
           const WelcomeCard(),
 
           const SizedBox(height: 30),
 
-          // Overview
           const Text(
             "Overview",
             style: TextStyle(
@@ -52,7 +55,7 @@ class TutorHomePage extends StatelessWidget {
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
             childAspectRatio: 1.8,
-            children: const [
+            children: [
               DashboardCard(
                 title: "Primary Learner",
                 value: "Lakshmi Amma",
@@ -60,6 +63,7 @@ class TutorHomePage extends StatelessWidget {
                 icon: Icons.person,
                 color: Colors.blue,
               ),
+
               DashboardCard(
                 title: "Current Session",
                 value: "Session 4",
@@ -67,6 +71,7 @@ class TutorHomePage extends StatelessWidget {
                 icon: Icons.menu_book_rounded,
                 color: Colors.orange,
               ),
+
               DashboardCard(
                 title: "Pending Assessment",
                 value: "1",
@@ -74,6 +79,7 @@ class TutorHomePage extends StatelessWidget {
                 icon: Icons.assignment_turned_in_outlined,
                 color: Colors.green,
               ),
+
               DashboardCard(
                 title: "Feedback Pending",
                 value: "1",
@@ -86,23 +92,21 @@ class TutorHomePage extends StatelessWidget {
 
           const SizedBox(height: 30),
 
-          // Today's Session Plan
           const TaskSection(),
 
           const SizedBox(height: 30),
 
-          // Students Requiring Support
           const StudentsSupportSection(),
 
           const SizedBox(height: 30),
 
-          // Recent Activity
           const ActivitySection(),
 
           const SizedBox(height: 30),
 
-          // Quick Actions
-          const QuickActionSection(),
+          QuickActionSection(
+            onNavigate: onNavigate,
+          ),
 
           const SizedBox(height: 30),
         ],
