@@ -1,47 +1,47 @@
 import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:http/http.dart' as http;
 
 class CloudinaryService {
-  // ⚠️ REPLACE THESE TWO VALUES WITH YOUR CLOUDINARY DETAILS
-  static const String cloudName = "nejxbexi";
-  static const String uploadPreset = "gzog2hnx";
+  static const String cloudName = 'qzia5ini';
+  static const String uploadPreset = 'yuvavigyan_upload';
 
-  /// Uploads any file (PDF, DOCX, Video, Image) as bytes to Cloudinary
-  /// Returns the public HTTPS Download URL if successful, or null if failed.
   static Future<String?> uploadFile({
     required Uint8List fileBytes,
     required String fileName,
-    String resourceType = "auto", // 'auto', 'raw' (for PDF/DOCX), or 'video'
+    String resourceType = 'auto',
   }) async {
     try {
-      final url = Uri.parse(
-        "https://api.cloudinary.com/v1_1/$cloudName/$resourceType/upload",
+      final uri = Uri.parse(
+        'https://api.cloudinary.com/v1_1/$cloudName/$resourceType/upload',
       );
 
-      final request = http.MultipartRequest("POST", url)
-        ..fields['upload_preset'] = uploadPreset
-        ..files.add(
-          http.MultipartFile.fromBytes(
-            'file',
-            fileBytes,
-            filename: fileName,
-          ),
-        );
+      final request = http.MultipartRequest('POST', uri);
+
+      request.fields['upload_preset'] = uploadPreset;
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          fileBytes,
+          filename: fileName,
+        ),
+      );
 
       final response = await request.send();
-      final responseData = await response.stream.bytesToString();
-      final jsonResponse = jsonDecode(responseData);
+      final responseBody = await response.stream.bytesToString();
 
       if (response.statusCode == 200) {
-        // Return the secure HTTPS URL
-        return jsonResponse['secure_url'] as String?;
+        final data = jsonDecode(responseBody);
+        return data['secure_url'];
       } else {
-        print("Cloudinary Upload Failed: $responseData");
+        print('Cloudinary upload failed: ${response.statusCode}');
+        print(responseBody);
         return null;
       }
     } catch (e) {
-      print("Cloudinary Error: $e");
+      print('Cloudinary error: $e');
       return null;
     }
   }
