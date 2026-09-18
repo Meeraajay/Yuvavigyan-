@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+import 'tutor_home_page.dart';
+import 'students/assigned_students_page.dart';
+import 'evaluation_history_page.dart';
+import 'feedback_page.dart';
+import 'reports_page.dart';
+
 class TutorDashboard extends StatefulWidget {
   const TutorDashboard({super.key});
 
@@ -10,13 +16,32 @@ class TutorDashboard extends StatefulWidget {
 class _TutorDashboardState extends State<TutorDashboard> {
   int index = 0;
 
-  final pages = const [
-    TutorHomePage(),
-    AssignedStudentsPage(),
-    CreateTestPage(),
-    EvaluatePage(),
-    FeedbackPage(),
-  ];
+  late final List<Widget> pages;
+
+  @override
+  void initState() {
+    super.initState();
+
+    pages = [
+      TutorHomePage(
+        onNavigate: _navigateToPage,
+      ),
+      const AssignedStudentsPage(),
+      const EvaluationHistoryPage(),
+      const ReportsPage(),
+      const FeedbackPage(),
+    ];
+  }
+
+  void _navigateToPage(int pageIndex) {
+    if (pageIndex < 0 || pageIndex >= pages.length) {
+      return;
+    }
+
+    setState(() {
+      index = pageIndex;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,132 +51,45 @@ class _TutorDashboardState extends State<TutorDashboard> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () {},
-          )
+            onPressed: () {
+              // Logout will be added later.
+            },
+          ),
         ],
       ),
       body: pages[index],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: index,
         type: BottomNavigationBarType.fixed,
+        selectedItemColor: Colors.deepPurple,
+        unselectedItemColor: Colors.grey,
         onTap: (value) {
-          setState(() => index = value);
+          setState(() {
+            index = value;
+          });
         },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: "Students"),
-          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: "Tests"),
-          BottomNavigationBarItem(icon: Icon(Icons.grading), label: "Evaluate"),
-          BottomNavigationBarItem(icon: Icon(Icons.feedback), label: "Feedback"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_rounded),
+            label: "Home",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_alt_rounded),
+            label: "Students",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.grading_rounded),
+            label: "Evaluate",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.analytics_outlined),
+            label: "Reports",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.feedback_outlined),
+            label: "Feedback",
+          ),
         ],
-      ),
-    );
-  }
-}
-
-class TutorHomePage extends StatelessWidget {
-  const TutorHomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.count(
-      padding: const EdgeInsets.all(20),
-      crossAxisCount: 2,
-      crossAxisSpacing: 15,
-      mainAxisSpacing: 15,
-      children: const [
-        DashboardCard(title: "Assigned Students", value: "0", icon: Icons.people),
-        DashboardCard(title: "Pending Tests", value: "0", icon: Icons.assignment),
-        DashboardCard(title: "To Evaluate", value: "0", icon: Icons.grading),
-        DashboardCard(title: "Feedback Given", value: "0", icon: Icons.feedback),
-      ],
-    );
-  }
-}
-
-class AssignedStudentsPage extends StatelessWidget {
-  const AssignedStudentsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text("List of Assigned Students\nTrack Progress Here"),
-    );
-  }
-}
-
-class CreateTestPage extends StatelessWidget {
-  const CreateTestPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        child: const Icon(Icons.add),
-      ),
-      body: const Center(
-        child: Text("Create / Schedule Tests"),
-      ),
-    );
-  }
-}
-
-class EvaluatePage extends StatelessWidget {
-  const EvaluatePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text("Evaluate Submitted Tests"),
-    );
-  }
-}
-
-class FeedbackPage extends StatelessWidget {
-  const FeedbackPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        child: const Icon(Icons.add_comment),
-      ),
-      body: const Center(
-        child: Text("Give Feedback to Students"),
-      ),
-    );
-  }
-}
-
-class DashboardCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-
-  const DashboardCard({
-    super.key,
-    required this.title,
-    required this.value,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 40),
-            const SizedBox(height: 10),
-            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            Text(title, textAlign: TextAlign.center),
-          ],
-        ),
       ),
     );
   }
