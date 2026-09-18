@@ -4,6 +4,7 @@ import 'tutor_home_page.dart';
 import 'students/assigned_students_page.dart';
 import 'evaluation_history_page.dart';
 import 'feedback_page.dart';
+import 'reports_page.dart';
 
 class TutorDashboard extends StatefulWidget {
   const TutorDashboard({super.key});
@@ -89,24 +90,6 @@ class _TutorDashboardState extends State<TutorDashboard> {
             label: "Feedback",
           ),
         ],
-      ),
-    );
-  }
-}
-
-class ReportsPage extends StatelessWidget {
-  const ReportsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        "Reports Module\nComing Soon",
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
   }
