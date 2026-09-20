@@ -23,8 +23,9 @@ const LinearGradient kHeaderGradient = LinearGradient(
 );
 
 /// Gradient app bar used on every inner page.
-AppBar gradientAppBar(String title) {
+AppBar gradientAppBar(String title, {Widget? leading}) {
   return AppBar(
+    leading: leading,
     title: Text(
       title,
       style: const TextStyle(
@@ -173,10 +174,34 @@ class _CoreTutorDashboardState extends State<CoreTutorDashboard> {
       const FeedbackPage(),
     ];
 
-    return Scaffold(
+    return PopScope(
+      // On any tab other than Home, the system back button returns to
+      // Home instead of closing the app.
+      canPop: index == 0,
+      onPopInvoked: (didPop) {
+        if (!didPop) {
+          setState(() {
+            index = 0;
+          });
+        }
+      },
+      child: Scaffold(
       backgroundColor: kBg,
       // The home tab draws its own welcome header.
-      appBar: index == 0 ? null : gradientAppBar(_titles[index]),
+      appBar: index == 0
+          ? null
+          : gradientAppBar(
+              _titles[index],
+              leading: IconButton(
+                tooltip: 'Back to Home',
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () {
+                  setState(() {
+                    index = 0;
+                  });
+                },
+              ),
+            ),
       body: pages[index],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: index,
@@ -225,6 +250,7 @@ class _CoreTutorDashboardState extends State<CoreTutorDashboard> {
           ),
         ],
       ),
+    ),
     );
   }
 }
