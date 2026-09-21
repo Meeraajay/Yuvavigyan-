@@ -16,25 +16,33 @@ class SearchBarWidget extends StatelessWidget {
       controller: controller,
       onChanged: onChanged,
       decoration: InputDecoration(
-        hintText: "Search Student",
-        prefixIcon: const Icon(Icons.search),
+        hintText: "Search student, email or batch",
+        prefixIcon: const Icon(
+          Icons.search_rounded,
+        ),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius:
+              BorderRadius.circular(15),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide(
-            color: Colors.grey.shade300,
+          borderRadius:
+              BorderRadius.circular(15),
+          borderSide: const BorderSide(
+            color: Color(0xFFE5E7EB),
           ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius:
+              BorderRadius.circular(15),
           borderSide: const BorderSide(
-            color: Colors.deepPurple,
+            color: Color(0xFF3F51B5),
             width: 2,
           ),
         ),

@@ -1,322 +1,462 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class EvaluationHistoryPage extends StatelessWidget {
-  const EvaluationHistoryPage({super.key});
+class EvaluationHistoryPage
+    extends StatefulWidget {
+  const EvaluationHistoryPage({
+    super.key,
+  });
+
+  @override
+  State<EvaluationHistoryPage>
+      createState() =>
+          _EvaluationHistoryPageState();
+}
+
+class _EvaluationHistoryPageState
+    extends State<EvaluationHistoryPage> {
+  bool isLoading = true;
+  String? errorMessage;
+
+  List<
+          QueryDocumentSnapshot<
+              Map<String, dynamic>>>
+      evaluations = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEvaluations();
+  }
+
+  Future<void>
+      _loadEvaluations() async {
+    try {
+      final tutor =
+          FirebaseAuth.instance.currentUser;
+
+      if (tutor == null) {
+        throw Exception(
+          "No tutor is currently logged in.",
+        );
+      }
+
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('evaluations')
+              .where(
+                'tutorId',
+                isEqualTo: tutor.uid,
+              )
+              .get();
+
+      final docs =
+          snapshot.docs.toList();
+
+      docs.sort(
+        (a, b) {
+          final aValue =
+              a.data()['createdAt'];
+          final bValue =
+              b.data()['createdAt'];
+
+          final aDate =
+              aValue is Timestamp
+                  ? aValue.toDate()
+                  : DateTime(1970);
+
+          final bDate =
+              bValue is Timestamp
+                  ? bValue.toDate()
+                  : DateTime(1970);
+
+          return bDate.compareTo(
+            aDate,
+          );
+        },
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        evaluations = docs;
+        isLoading = false;
+        errorMessage = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+        errorMessage = e.toString();
+      });
+    }
+  }
+
+  String _formatDate(
+    dynamic value,
+  ) {
+    if (value is! Timestamp) {
+      return "Date unavailable";
+    }
+
+    final date = value.toDate();
+
+    return "${date.day.toString().padLeft(2, '0')}/"
+        "${date.month.toString().padLeft(2, '0')}/"
+        "${date.year}";
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor:
+          const Color(0xFFF7F8FC),
       appBar: AppBar(
-        title: const Text("Evaluation History"),
+        title:
+            const Text("Evaluation History"),
+        backgroundColor:
+            Colors.white,
+        foregroundColor:
+            const Color(0xFF222222),
+        elevation: 0.5,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-
-            const Text(
-              "Evaluation History",
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // ----------------------------------------------------------
-            // STUDENT
-            // ----------------------------------------------------------
-
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-
-                    Row(
-                      children: [
-
-                        CircleAvatar(
-                          radius: 28,
-                          backgroundColor: Colors.deepPurple.shade50,
-                          child: const Icon(
-                            Icons.person,
-                            color: Colors.deepPurple,
-                            size: 30,
-                          ),
+      body: RefreshIndicator(
+        onRefresh: _loadEvaluations,
+        child: isLoading
+            ? const Center(
+                child:
+                    CircularProgressIndicator(),
+              )
+            : errorMessage != null
+                ? ListView(
+                    padding:
+                        const EdgeInsets.all(
+                      24,
+                    ),
+                    children: [
+                      Text(
+                        "Could not load evaluations.\n\n"
+                        "$errorMessage",
+                        textAlign:
+                            TextAlign.center,
+                      ),
+                    ],
+                  )
+                : evaluations.isEmpty
+                    ? ListView(
+                        padding:
+                            const EdgeInsets.all(
+                          24,
                         ),
-
-                        const SizedBox(width: 15),
-
-                        const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-
-                            Text(
-                              "Lakshmi Amma",
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
+                        children:
+                            const [
+                          SizedBox(
+                            height: 140,
+                          ),
+                          Icon(
+                            Icons
+                                .grading_outlined,
+                            size: 72,
+                            color: Colors.grey,
+                          ),
+                          SizedBox(
+                            height: 16,
+                          ),
+                          Text(
+                            "No evaluations saved yet.",
+                            textAlign:
+                                TextAlign.center,
+                            style:
+                                TextStyle(
+                              color:
+                                  Colors.grey,
+                              fontSize: 16,
                             ),
-
-                            SizedBox(height: 4),
-
-                            Text(
-                              "YUVAVIJNAN 2026",
+                          ),
+                        ],
+                      )
+                    : ListView(
+                        padding:
+                            const EdgeInsets.all(
+                          18,
+                        ),
+                        children: [
+                          const Text(
+                            "Saved Evaluations",
+                            style:
+                                TextStyle(
+                              fontSize: 26,
+                              fontWeight:
+                                  FontWeight
+                                      .bold,
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
-
-                    const Divider(height: 30),
-
-                    const ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(Icons.menu_book),
-                      title: Text("Session 4"),
-                      subtitle: Text("Digital Payments"),
-                    ),
-
-                    const Divider(),
-
-                    const ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(Icons.calendar_today),
-                      title: Text("Evaluation Date"),
-                      subtitle: Text("24 August 2026"),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // ----------------------------------------------------------
-            // PERFORMANCE
-            // ----------------------------------------------------------
-
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-
-                    const Text(
-                      "Performance",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    Row(
-                      children: [
-
-                        Expanded(
-                          child: _ScoreCard(
-                            title: "Understanding",
-                            value: "3 / 5",
-                            icon: Icons.psychology,
                           ),
-                        ),
-
-                        const SizedBox(width: 12),
-
-                        Expanded(
-                          child: _ScoreCard(
-                            title: "Assessment",
-                            value: "8 / 10",
-                            icon: Icons.assignment_turned_in,
+                          const SizedBox(
+                            height: 6,
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // ----------------------------------------------------------
-            // TUTOR REMARKS
-            // ----------------------------------------------------------
-
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-
-                    const Text(
-                      "Tutor Remarks",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-
-                    const SizedBox(height: 15),
-
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        color: Colors.deepPurple.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        "Student understands the topic well but needs "
-                        "more practice with digital payments.",
-                        style: TextStyle(
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // ----------------------------------------------------------
-            // FEEDBACK
-            // ----------------------------------------------------------
-
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-
-                    const Text(
-                      "Feedback",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-
-                    const SizedBox(height: 15),
-
-                    Row(
-                      children: const [
-
-                        Icon(
-                          Icons.category,
-                          color: Colors.deepPurple,
-                        ),
-
-                        SizedBox(width: 10),
-
-                        Text(
-                          "General",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
+                          Text(
+                            "${evaluations.length} evaluation"
+                            "${evaluations.length == 1 ? '' : 's'}",
+                            style:
+                                const TextStyle(
+                              color:
+                                  Colors.grey,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(
+                            height: 18,
+                          ),
+                          ...evaluations.map(
+                            (doc) {
+                              final data =
+                                  doc.data();
 
-                    const SizedBox(height: 15),
+                              final name =
+                                  data['studentName']
+                                          ?.toString() ??
+                                      'Student';
 
-                    const Text(
-                      "Performance Rating: 3 / 5",
-                      style: TextStyle(
-                        fontSize: 16,
+                              final batch =
+                                  data['batchName']
+                                          ?.toString() ??
+                                      '';
+
+                              final understanding =
+                                  (data['understandingRating']
+                                              as num?)
+                                          ?.toDouble() ??
+                                      0;
+
+                              final score =
+                                  data['assessmentScore'] ??
+                                      0;
+
+                              final total =
+                                  data['assessmentTotal'] ??
+                                      10;
+
+                              final remarks =
+                                  data['remarks']
+                                          ?.toString() ??
+                                      '';
+
+                              return Container(
+                                margin:
+                                    const EdgeInsets
+                                        .only(
+                                  bottom:
+                                      14,
+                                ),
+                                padding:
+                                    const EdgeInsets
+                                        .all(
+                                  18,
+                                ),
+                                decoration:
+                                    BoxDecoration(
+                                  color:
+                                      Colors.white,
+                                  borderRadius:
+                                      BorderRadius
+                                          .circular(
+                                    18,
+                                  ),
+                                  border:
+                                      Border.all(
+                                    color:
+                                        const Color(
+                                      0xFFEEF0F5,
+                                    ),
+                                  ),
+                                ),
+                                child:
+                                    Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment
+                                          .start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const CircleAvatar(
+                                          backgroundColor:
+                                              Color(
+                                            0xFFE8EAF6,
+                                          ),
+                                          child:
+                                              Icon(
+                                            Icons
+                                                .person_rounded,
+                                            color:
+                                                Color(
+                                              0xFF3F51B5,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(
+                                          width:
+                                              12,
+                                        ),
+                                        Expanded(
+                                          child:
+                                              Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment
+                                                    .start,
+                                            children: [
+                                              Text(
+                                                name,
+                                                style:
+                                                    const TextStyle(
+                                                  fontWeight:
+                                                      FontWeight.bold,
+                                                  fontSize:
+                                                      17,
+                                                ),
+                                              ),
+                                              if (batch.isNotEmpty)
+                                                Text(
+                                                  batch,
+                                                  style:
+                                                      const TextStyle(
+                                                    color:
+                                                        Colors.grey,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                        Text(
+                                          _formatDate(
+                                            data['createdAt'],
+                                          ),
+                                          style:
+                                              const TextStyle(
+                                            color:
+                                                Colors.grey,
+                                            fontSize:
+                                                12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(
+                                      height:
+                                          16,
+                                    ),
+                                    Wrap(
+                                      spacing:
+                                          10,
+                                      runSpacing:
+                                          10,
+                                      children: [
+                                        _ScoreBadge(
+                                          label:
+                                              "Understanding",
+                                          value:
+                                              "${understanding.toStringAsFixed(0)} / 5",
+                                          color:
+                                              const Color(
+                                            0xFF3F51B5,
+                                          ),
+                                        ),
+                                        _ScoreBadge(
+                                          label:
+                                              "Assessment",
+                                          value:
+                                              "$score / $total",
+                                          color:
+                                              const Color(
+                                            0xFF009688,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (remarks.isNotEmpty) ...[
+                                      const SizedBox(
+                                        height:
+                                            14,
+                                      ),
+                                      Container(
+                                        width:
+                                            double.infinity,
+                                        padding:
+                                            const EdgeInsets.all(
+                                          12,
+                                        ),
+                                        decoration:
+                                            BoxDecoration(
+                                          color:
+                                              const Color(
+                                            0xFFF8FAFC,
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        child:
+                                            Text(
+                                          remarks,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 25),
-          ],
-        ),
       ),
     );
   }
 }
 
-// ======================================================================
-// SCORE CARD
-// ======================================================================
-
-class _ScoreCard extends StatelessWidget {
-  final String title;
+class _ScoreBadge extends StatelessWidget {
+  final String label;
   final String value;
-  final IconData icon;
+  final Color color;
 
-  const _ScoreCard({
-    required this.title,
+  const _ScoreBadge({
+    required this.label,
     required this.value,
-    required this.icon,
+    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.deepPurple.shade50,
-        borderRadius: BorderRadius.circular(12),
+      padding:
+          const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 9,
       ),
-      child: Column(
+      decoration: BoxDecoration(
+        color: color.withOpacity(
+          0.10,
+        ),
+        borderRadius:
+            BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize:
+            MainAxisSize.min,
         children: [
-
-          Icon(
-            icon,
-            color: Colors.deepPurple,
-            size: 30,
-          ),
-
-          const SizedBox(height: 10),
-
           Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontWeight: FontWeight.w500,
+            "$label: ",
+            style:
+                const TextStyle(
+              fontSize: 13,
             ),
           ),
-
-          const SizedBox(height: 5),
-
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+            style: TextStyle(
+              color: color,
+              fontWeight:
+                  FontWeight.bold,
             ),
           ),
         ],

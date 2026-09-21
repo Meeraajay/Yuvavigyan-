@@ -1,13 +1,14 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'widgets/welcome_card.dart';
 import 'widgets/dashboard_card.dart';
-import 'widgets/task_section.dart';
-import 'widgets/students_support_section.dart';
-import 'widgets/activity_section.dart';
 import 'widgets/quick_action_section.dart';
 
-class TutorHomePage extends StatelessWidget {
+class TutorHomePage extends StatefulWidget {
   final void Function(int) onNavigate;
 
   const TutorHomePage({
@@ -16,99 +17,299 @@ class TutorHomePage extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
+  State<TutorHomePage> createState() => _TutorHomePageState();
+}
 
-    int crossAxisCount;
+class _TutorHomePageState extends State<TutorHomePage> {
+  bool isLoading = true;
 
-    if (width >= 1200) {
-      crossAxisCount = 4;
-    } else if (width >= 700) {
-      crossAxisCount = 2;
-    } else {
-      crossAxisCount = 2;
-    }
+  String tutorName = "Tutor";
+  String tutorEmail = "";
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const WelcomeCard(),
+  int assignedStudentCount = 0;
+  int uniqueBatchCount = 0;
+  int completedApplications = 0;
+  int pendingApplications = 0;
 
-          const SizedBox(height: 30),
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+      _tutorSubscription;
 
-          const Text(
-            "Overview",
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+      _studentsSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _listenToDashboard();
+  }
+
+  @override
+  void dispose() {
+    _tutorSubscription?.cancel();
+    _studentsSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _listenToDashboard() {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      setState(() {
+        isLoading = false;
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "No tutor is currently logged in.",
             ),
           ),
+        );
+      });
 
-          const SizedBox(height: 18),
+      return;
+    }
 
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.8,
-            children: [
-              DashboardCard(
-                title: "Primary Learner",
-                value: "Lakshmi Amma",
-                subtitle: "Session 4",
-                icon: Icons.person,
-                color: Colors.blue,
-              ),
+    // ----------------------------------------------------------
+    // LIVE TUTOR PROFILE
+    // ----------------------------------------------------------
+    _tutorSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .snapshots()
+        .listen(
+      (doc) {
+        if (!mounted) return;
 
-              DashboardCard(
-                title: "Current Session",
-                value: "Session 4",
-                subtitle: "Digital Payments",
-                icon: Icons.menu_book_rounded,
-                color: Colors.orange,
-              ),
+        final data = doc.data() ?? {};
 
-              DashboardCard(
-                title: "Pending Assessment",
-                value: "1",
-                subtitle: "Needs Evaluation",
-                icon: Icons.assignment_turned_in_outlined,
-                color: Colors.green,
-              ),
+        setState(() {
+          tutorName =
+              data['name']?.toString().trim().isNotEmpty == true
+                  ? data['name'].toString().trim()
+                  : (user.displayName?.trim().isNotEmpty == true
+                      ? user.displayName!.trim()
+                      : "Tutor");
 
-              DashboardCard(
-                title: "Feedback Pending",
-                value: "1",
-                subtitle: "Submit Today",
-                icon: Icons.feedback_outlined,
-                color: Colors.purple,
-              ),
-            ],
+          tutorEmail =
+              data['email']?.toString().trim().isNotEmpty == true
+                  ? data['email'].toString().trim()
+                  : (user.email ?? "");
+        });
+      },
+      onError: (error) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Could not load tutor profile: $error",
+            ),
+          ),
+        );
+      },
+    );
+
+    // ----------------------------------------------------------
+    // LIVE ASSIGNED STUDENTS + APPLICATION COUNTS
+    // ----------------------------------------------------------
+    _studentsSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .where(
+          'assignedTutorId',
+          isEqualTo: user.uid,
+        )
+        .snapshots()
+        .listen(
+      (snapshot) {
+        final students = snapshot.docs.where((doc) {
+          final data = doc.data();
+
+          return data['role']?.toString() == 'student' &&
+              data['isActive'] != false;
+        }).toList();
+
+        final uniqueBatchIds = <String>{};
+        int completed = 0;
+
+        for (final doc in students) {
+          final data = doc.data();
+
+          final batchId =
+              data['batchId']?.toString().trim() ?? '';
+
+          if (batchId.isNotEmpty) {
+            uniqueBatchIds.add(batchId);
+          }
+
+          final applicationCompleted =
+              data['applicationCompleted'] == true ||
+                  data['applicationStatus']?.toString().toLowerCase() ==
+                      'completed';
+
+          if (applicationCompleted) {
+            completed++;
+          }
+        }
+
+        if (!mounted) return;
+
+        setState(() {
+          assignedStudentCount = students.length;
+          uniqueBatchCount = uniqueBatchIds.length;
+          completedApplications = completed;
+          pendingApplications = students.length - completed;
+          isLoading = false;
+        });
+      },
+      onError: (error) {
+        if (!mounted) return;
+
+        setState(() {
+          isLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Could not load tutor dashboard: $error",
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _refreshDashboard() async {
+    // The page already uses Firestore live listeners.
+    // This simply waits briefly so the RefreshIndicator has normal behavior.
+    await Future<void>.delayed(
+      const Duration(milliseconds: 300),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final horizontalPadding = width < 600 ? 16.0 : 22.0;
+
+    return RefreshIndicator(
+      onRefresh: _refreshDashboard,
+      child: ListView(
+        padding: EdgeInsets.zero,
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          WelcomeCard(
+            tutorName: tutorName,
+            tutorEmail: tutorEmail,
           ),
 
-          const SizedBox(height: 30),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              horizontalPadding,
+              24,
+              horizontalPadding,
+              30,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Overview",
+                  style: TextStyle(
+                    fontSize: 23,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF222222),
+                  ),
+                ),
 
-          const TaskSection(),
+                const SizedBox(height: 16),
 
-          const SizedBox(height: 30),
+                if (isLoading)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(30),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      int columns;
 
-          const StudentsSupportSection(),
+                      if (constraints.maxWidth < 600) {
+                        columns = 1;
+                      } else if (constraints.maxWidth < 950) {
+                        columns = 2;
+                      } else {
+                        columns = 4;
+                      }
 
-          const SizedBox(height: 30),
+                      const spacing = 12.0;
 
-          const ActivitySection(),
+                      final cardWidth =
+                          (constraints.maxWidth -
+                                  spacing * (columns - 1)) /
+                              columns;
 
-          const SizedBox(height: 30),
+                      final cards = [
+                        DashboardCard(
+                          title: "Assigned Students",
+                          value: "$assignedStudentCount",
+                          subtitle: "Assigned by Admin",
+                          icon: Icons.people_alt_rounded,
+                          color: const Color(0xFF3F51B5),
+                        ),
+                        DashboardCard(
+                          title: "Student Batches",
+                          value: "$uniqueBatchCount",
+                          subtitle: "From assigned students",
+                          icon: Icons.folder_copy_rounded,
+                          color: const Color(0xFFFF9800),
+                        ),
+                        DashboardCard(
+                          title: "Applications Done",
+                          value: "$completedApplications",
+                          subtitle: "Admission forms completed",
+                          icon: Icons.task_alt_rounded,
+                          color: const Color(0xFF009688),
+                        ),
+                        DashboardCard(
+                          title: "Applications Pending",
+                          value: "$pendingApplications",
+                          subtitle: "Need admission form",
+                          icon: Icons.pending_actions_rounded,
+                          color: const Color(0xFFE84B59),
+                        ),
+                      ];
 
-          QuickActionSection(
-            onNavigate: onNavigate,
+                      return Wrap(
+                        spacing: spacing,
+                        runSpacing: spacing,
+                        children: cards
+                            .map(
+                              (card) => SizedBox(
+                                width: cardWidth,
+                                height: 180,
+                                child: card,
+                              ),
+                            )
+                            .toList(),
+                      );
+                    },
+                  ),
+
+                const SizedBox(height: 30),
+
+                QuickActionSection(
+                  onNavigate: widget.onNavigate,
+                ),
+              ],
+            ),
           ),
-
-          const SizedBox(height: 30),
         ],
       ),
     );

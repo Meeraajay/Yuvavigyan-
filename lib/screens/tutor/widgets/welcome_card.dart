@@ -1,19 +1,35 @@
 import 'package:flutter/material.dart';
 
 class WelcomeCard extends StatelessWidget {
-  const WelcomeCard({super.key});
+  final String tutorName;
+  final String tutorEmail;
 
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
+  const WelcomeCard({
+    super.key,
+    required this.tutorName,
+    required this.tutorEmail,
+  });
 
-    final greeting = now.hour < 12
-        ? "Good Morning"
-        : now.hour < 17
-            ? "Good Afternoon"
-            : "Good Evening";
+  String _greeting() {
+    final hour = DateTime.now().hour;
 
-    final months = [
+    if (hour < 12) return "Good morning,";
+    if (hour < 17) return "Good afternoon,";
+    return "Good evening,";
+  }
+
+  String _formattedDate() {
+    const weekdays = [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat",
+      "Sun",
+    ];
+
+    const months = [
       "Jan",
       "Feb",
       "Mar",
@@ -25,108 +41,175 @@ class WelcomeCard extends StatelessWidget {
       "Sep",
       "Oct",
       "Nov",
-      "Dec"
+      "Dec",
     ];
+
+    final now = DateTime.now();
+
+    return "${weekdays[now.weekday - 1]}, "
+        "${now.day} ${months[now.month - 1]}";
+  }
+
+  String _initial() {
+    final name = tutorName.trim();
+    if (name.isEmpty) return "T";
+    return name[0].toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final horizontalPadding = width < 600 ? 16.0 : 24.0;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF4F46E5),
-            Color(0xFF06B6D4),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withOpacity(.25),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          )
-        ],
+      padding: EdgeInsets.fromLTRB(
+        horizontalPadding,
+        width < 600 ? 22 : 28,
+        horizontalPadding,
+        26,
       ),
-      child: Row(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFF1F2D86),
+            Color(0xFF6174CE),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(36),
+          bottomRight: Radius.circular(36),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "$greeting 👋",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 26,
+          Row(
+            children: [
+              Container(
+                width: width < 600 ? 68 : 82,
+                height: width < 600 ? 68 : 82,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.45),
+                    width: 4,
                   ),
                 ),
-
-                const SizedBox(height: 6),
-
-                const Text(
-                  "Welcome back, Tutor",
+                alignment: Alignment.center,
+                child: Text(
+                  _initial(),
                   style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 18,
+                    color: const Color(0xFF3448A5),
+                    fontSize: width < 600 ? 28 : 38,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
+              ),
 
-                const SizedBox(height: 12),
+              const SizedBox(width: 18),
 
-                Text(
-                  "${now.day} ${months[now.month - 1]} ${now.year}",
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 15,
-                  ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _greeting(),
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.82),
+                        fontSize: width < 600 ? 14 : 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      tutorName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: width < 600 ? 24 : 30,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (tutorEmail.trim().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        tutorEmail,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.78),
+                          fontSize: width < 600 ? 12 : 14,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-
-                const SizedBox(height: 18),
-
-                const Text(
-                  "Today's Progress",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: const LinearProgressIndicator(
-                    value: .65,
-                    minHeight: 8,
-                    backgroundColor: Colors.white24,
-                    valueColor: AlwaysStoppedAnimation(Colors.white),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                const Text(
-                  "13 of 20 Tasks Completed",
-                  style: TextStyle(
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
 
-          const SizedBox(width: 20),
+          const SizedBox(height: 24),
 
-          CircleAvatar(
-            radius: 42,
-            backgroundColor: Colors.white,
-            child: Icon(
-              Icons.school_rounded,
-              size: 42,
-              color: Colors.indigo.shade600,
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _Badge(
+                icon: Icons.verified_rounded,
+                text: "Tutor",
+              ),
+              _Badge(
+                icon: Icons.calendar_month_rounded,
+                text: _formattedDate(),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _Badge({
+    required this.icon,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 13,
+        vertical: 9,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.16),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 17,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 7),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
             ),
           ),
         ],

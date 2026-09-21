@@ -1,9 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
 import 'student_details_page.dart';
-import 'widgets/batch_info_card.dart';
 import 'widgets/search_bar_widget.dart';
 import 'widgets/student_card.dart';
 
@@ -11,14 +10,18 @@ class AssignedStudentsPage extends StatefulWidget {
   const AssignedStudentsPage({super.key});
 
   @override
-  State<AssignedStudentsPage> createState() => _AssignedStudentsPageState();
+  State<AssignedStudentsPage> createState() =>
+      _AssignedStudentsPageState();
 }
 
-class _AssignedStudentsPageState extends State<AssignedStudentsPage> {
-  final TextEditingController searchController = TextEditingController();
+class _AssignedStudentsPageState
+    extends State<AssignedStudentsPage> {
+  final TextEditingController searchController =
+      TextEditingController();
 
   List<Map<String, dynamic>> students = [];
-  List<Map<String, dynamic>> filteredStudents = [];
+  List<Map<String, dynamic>>
+      filteredStudents = [];
 
   bool isLoading = true;
 
@@ -27,49 +30,101 @@ class _AssignedStudentsPageState extends State<AssignedStudentsPage> {
     super.initState();
 
     fetchAssignedStudents();
-
-    searchController.addListener(() {
-      filterStudents();
-    });
+    searchController.addListener(
+      filterStudents,
+    );
   }
 
   Future<void> fetchAssignedStudents() async {
-    setState(() {
-      isLoading = true;
-    });
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+      });
+    }
 
     try {
-      final User? currentUser = FirebaseAuth.instance.currentUser;
+      final currentUser =
+          FirebaseAuth.instance.currentUser;
 
       if (currentUser == null) {
-        throw Exception('No tutor is currently logged in.');
+        throw Exception(
+          "No tutor is currently logged in.",
+        );
       }
 
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where(
-            'assignedTutorId',
-            isEqualTo: currentUser.uid,
-          )
-          .get();
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .where(
+                'assignedTutorId',
+                isEqualTo:
+                    currentUser.uid,
+              )
+              .get();
 
-      final fetchedStudents = snapshot.docs.map((doc) {
-        final data = doc.data();
+      final fetchedStudents =
+          snapshot.docs
+              .where(
+                (doc) {
+                  final data = doc.data();
 
-        return {
-          'id': doc.id,
-          'name': data['name'] ?? 'No Name',
-          'email': data['email'] ?? '',
-          'progress': data['progress'] ?? 0.0,
-          'status': data['status'] ?? 'Pending',
-        };
-      }).toList();
+                  return data['role']
+                              ?.toString() ==
+                          'student' &&
+                      data['isActive'] !=
+                          false;
+                },
+              )
+              .map(
+                (doc) {
+                  final data = doc.data();
+
+                  return <
+                      String,
+                      dynamic>{
+                    'id': doc.id,
+                    'name':
+                        data['name'] ??
+                            'No Name',
+                    'email':
+                        data['email'] ??
+                            '',
+                    'batchId':
+                        data['batchId'] ??
+                            '',
+                    'batchName':
+                        data['batchName'] ??
+                            '',
+                    'applicationCompleted':
+                        data['applicationCompleted'] ==
+                                true ||
+                            data['applicationStatus']
+                                    ?.toString() ==
+                                'completed',
+                  };
+                },
+              )
+              .toList();
+
+      fetchedStudents.sort(
+        (a, b) => a['name']
+            .toString()
+            .toLowerCase()
+            .compareTo(
+              b['name']
+                  .toString()
+                  .toLowerCase(),
+            ),
+      );
 
       if (!mounted) return;
 
       setState(() {
         students = fetchedStudents;
-        filteredStudents = fetchedStudents;
+        filteredStudents =
+            List<Map<String, dynamic>>.from(
+          fetchedStudents,
+        );
         isLoading = false;
       });
     } catch (e) {
@@ -79,170 +134,224 @@ class _AssignedStudentsPageState extends State<AssignedStudentsPage> {
         isLoading = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
         SnackBar(
-          content: Text('Error loading students: $e'),
+          content: Text(
+            "Error loading students: $e",
+          ),
         ),
       );
     }
   }
 
   void filterStudents() {
-    final query = searchController.text.trim().toLowerCase();
+    final query = searchController.text
+        .trim()
+        .toLowerCase();
+
+    if (!mounted) return;
 
     setState(() {
       if (query.isEmpty) {
-        filteredStudents = students;
-      } else {
-        filteredStudents = students.where((student) {
-          final name = student['name'].toString().toLowerCase();
-          final email = student['email'].toString().toLowerCase();
-
-          return name.contains(query) || email.contains(query);
-        }).toList();
+        filteredStudents =
+            List<Map<String, dynamic>>.from(
+          students,
+        );
+        return;
       }
+
+      filteredStudents =
+          students.where(
+        (student) {
+          final name = student['name']
+              .toString()
+              .toLowerCase();
+
+          final email = student['email']
+              .toString()
+              .toLowerCase();
+
+          final batch = student['batchName']
+              .toString()
+              .toLowerCase();
+
+          return name.contains(query) ||
+              email.contains(query) ||
+              batch.contains(query);
+        },
+      ).toList();
     });
   }
 
   @override
   void dispose() {
+    searchController.removeListener(
+      filterStudents,
+    );
     searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: fetchAssignedStudents,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final uniqueBatchCount = students
+        .map(
+          (student) =>
+              student['batchId']
+                  ?.toString() ??
+              '',
+        )
+        .where(
+          (batchId) =>
+              batchId.isNotEmpty,
+        )
+        .toSet()
+        .length;
+
+    return Scaffold(
+      backgroundColor:
+          const Color(0xFFF7F8FC),
+      appBar: AppBar(
+        title:
+            const Text("My Students"),
+        backgroundColor: Colors.white,
+        foregroundColor:
+            const Color(0xFF222222),
+        elevation: 0.5,
+      ),
+      body: RefreshIndicator(
+        onRefresh: fetchAssignedStudents,
+        child: ListView(
+          padding:
+              const EdgeInsets.all(18),
           children: [
             const Text(
               "Assigned Students",
               style: TextStyle(
                 fontSize: 26,
-                fontWeight: FontWeight.bold,
+                fontWeight:
+                    FontWeight.bold,
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 6),
+
+            Text(
+              "${students.length} student"
+              "${students.length == 1 ? '' : 's'} "
+              "across $uniqueBatchCount batch"
+              "${uniqueBatchCount == 1 ? '' : 'es'}",
+              style: const TextStyle(
+                color: Colors.grey,
+              ),
+            ),
+
+            const SizedBox(height: 18),
 
             SearchBarWidget(
-              controller: searchController,
+              controller:
+                  searchController,
             ),
 
             const SizedBox(height: 20),
-
-            BatchInfoCard(
-              batch: "YUVAVIJNAN 2026",
-              session: "Assigned Students",
-              topic: "Student Learning",
-              totalStudents: students.length,
-            ),
-
-            const SizedBox(height: 25),
-
-            const Text(
-              "Student List",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 15),
 
             if (isLoading)
               const Center(
                 child: Padding(
-                  padding: EdgeInsets.all(30),
-                  child: CircularProgressIndicator(),
+                  padding:
+                      EdgeInsets.all(40),
+                  child:
+                      CircularProgressIndicator(),
                 ),
               )
             else if (students.isEmpty)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(30),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.people_outline,
-                        size: 60,
-                        color: Colors.grey,
-                      ),
-                      SizedBox(height: 12),
-                      Text(
-                        "No students assigned yet.",
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
+              const Padding(
+                padding:
+                    EdgeInsets.symmetric(
+                  vertical: 70,
                 ),
-              )
-            else if (filteredStudents.isEmpty)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(30),
-                  child: Text(
-                    "No students found.",
-                    style: TextStyle(
-                      fontSize: 16,
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons
+                          .people_outline_rounded,
+                      size: 70,
                       color: Colors.grey,
                     ),
+                    SizedBox(
+                      height: 14,
+                    ),
+                    Text(
+                      "No students are assigned to you yet.",
+                      textAlign:
+                          TextAlign.center,
+                      style:
+                          TextStyle(
+                        color:
+                            Colors.grey,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (filteredStudents
+                .isEmpty)
+              const Padding(
+                padding:
+                    EdgeInsets.symmetric(
+                  vertical: 60,
+                ),
+                child: Text(
+                  "No matching students found.",
+                  textAlign:
+                      TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey,
                   ),
                 ),
               )
             else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: filteredStudents.length,
-                itemBuilder: (context, index) {
-                  final student = filteredStudents[index];
-
-                  final double progress =
-                      (student['progress'] as num?)?.toDouble() ?? 0.0;
-
-                  final String status =
-                      student['status']?.toString() ?? 'Pending';
-
-                  Color statusColor;
-
-                  switch (status.toLowerCase()) {
-                    case 'completed':
-                      statusColor = Colors.green;
-                      break;
-
-                    case 'scheduled':
-                      statusColor = Colors.blue;
-                      break;
-
-                    default:
-                      statusColor = Colors.orange;
-                  }
-
-                  return StudentCard(
-                    name: student['name'],
-                    session: "Assigned Student",
-                    progress: progress,
-                    assessmentStatus: status,
-                    statusColor: statusColor,
-                    onViewDetails: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const StudentDetailsPage(),
+              ...filteredStudents.map(
+                (student) =>
+                    StudentCard(
+                  name: student['name']
+                      .toString(),
+                  email: student[
+                          'email']
+                      .toString(),
+                  batchName: student[
+                              'batchName']
+                          ?.toString()
+                          .trim()
+                          .isNotEmpty ==
+                      true
+                      ? student[
+                              'batchName']
+                          .toString()
+                      : "Batch not assigned",
+                  applicationCompleted:
+                      student[
+                              'applicationCompleted'] ==
+                          true,
+                  onViewDetails: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            StudentDetailsPage(
+                          studentId:
+                              student['id']
+                                  .toString(),
                         ),
-                      );
-                    },
-                  );
-                },
+                      ),
+                    ).then(
+                      (_) =>
+                          fetchAssignedStudents(),
+                    );
+                  },
+                ),
               ),
           ],
         ),

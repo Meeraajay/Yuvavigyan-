@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'tutor_home_page.dart';
+import 'tutor_materials_page.dart';
 import 'students/assigned_students_page.dart';
 import 'evaluation_history_page.dart';
 import 'feedback_page.dart';
-import 'reports_page.dart';
 
 class TutorDashboard extends StatefulWidget {
   const TutorDashboard({super.key});
@@ -16,27 +16,8 @@ class TutorDashboard extends StatefulWidget {
 class _TutorDashboardState extends State<TutorDashboard> {
   int index = 0;
 
-  late final List<Widget> pages;
-
-  @override
-  void initState() {
-    super.initState();
-
-    pages = [
-      TutorHomePage(
-        onNavigate: _navigateToPage,
-      ),
-      const AssignedStudentsPage(),
-      const EvaluationHistoryPage(),
-      const ReportsPage(),
-      const FeedbackPage(),
-    ];
-  }
-
   void _navigateToPage(int pageIndex) {
-    if (pageIndex < 0 || pageIndex >= pages.length) {
-      return;
-    }
+    if (pageIndex < 0 || pageIndex > 4) return;
 
     setState(() {
       index = pageIndex;
@@ -45,51 +26,57 @@ class _TutorDashboardState extends State<TutorDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Tutor Dashboard"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              // Logout will be added later.
-            },
-          ),
-        ],
+    final pages = [
+      TutorHomePage(
+        onNavigate: _navigateToPage,
       ),
-      body: pages[index],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: index,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.deepPurple,
-        unselectedItemColor: Colors.grey,
-        onTap: (value) {
-          setState(() {
-            index = value;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: "Home",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_alt_rounded),
-            label: "Students",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.grading_rounded),
-            label: "Evaluate",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.analytics_outlined),
-            label: "Reports",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.feedback_outlined),
-            label: "Feedback",
-          ),
-        ],
+      const AssignedStudentsPage(),
+      const TutorMaterialsPage(),
+      const EvaluationHistoryPage(),
+      const FeedbackPage(),
+    ];
+
+    const destinations = [
+      NavigationDestination(
+        icon: Icon(Icons.home_outlined),
+        selectedIcon: Icon(Icons.home_rounded),
+        label: "Home",
+      ),
+      NavigationDestination(
+        icon: Icon(Icons.people_outline_rounded),
+        selectedIcon: Icon(Icons.people_alt_rounded),
+        label: "Students",
+      ),
+      NavigationDestination(
+        icon: Icon(Icons.folder_outlined),
+        selectedIcon: Icon(Icons.folder_rounded),
+        label: "Materials",
+      ),
+      NavigationDestination(
+        icon: Icon(Icons.grading_outlined),
+        selectedIcon: Icon(Icons.grading_rounded),
+        label: "Evaluate",
+      ),
+      NavigationDestination(
+        icon: Icon(Icons.feedback_outlined),
+        selectedIcon: Icon(Icons.feedback_rounded),
+        label: "Feedback",
+      ),
+    ];
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F8FC),
+      body: IndexedStack(
+        index: index,
+        children: pages,
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: index,
+        onDestinationSelected: _navigateToPage,
+        backgroundColor: Colors.white,
+        indicatorColor: const Color(0xFFE8EAF6),
+        elevation: 8,
+        destinations: destinations,
       ),
     );
   }
