@@ -32,9 +32,9 @@ class QuickActionSection extends StatelessWidget {
         onTap: () => onNavigate(2),
       ),
       _QuickActionData(
-        title: "Evaluation",
-        subtitle: "Student evaluations",
-        icon: Icons.grading_rounded,
+        title: "Assessments",
+        subtitle: "Review & release marks",
+        icon: Icons.quiz_rounded,
         colors: const [
           Color(0xFF009688),
           Color(0xFF45B5A8),

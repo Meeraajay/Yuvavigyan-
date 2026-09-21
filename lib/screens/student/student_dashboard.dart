@@ -424,13 +424,20 @@ class _StudentHomePageState extends State<StudentHomePage> {
           .get();
 
       double percentageTotal = 0;
-      int percentageCount = 0;
+      int releasedCount = 0;
 
       for (final doc in attempts.docs) {
-        final value = doc.data()['percentage'];
+        final data = doc.data();
+
+        if (data['markReleased'] != true) {
+          continue;
+        }
+
+        final value = data['percentage'];
+
         if (value is num) {
           percentageTotal += value.toDouble();
-          percentageCount++;
+          releasedCount++;
         }
       }
 
@@ -440,9 +447,9 @@ class _StudentHomePageState extends State<StudentHomePage> {
         materialsCount = materialTotal;
         questionsCount = questionTotal;
         attemptsCount = attempts.docs.length;
-        averageScore = percentageCount == 0
+        averageScore = releasedCount == 0
             ? 0
-            : percentageTotal / percentageCount;
+            : percentageTotal / releasedCount;
         isLoadingStats = false;
       });
     } catch (_) {
@@ -666,6 +673,98 @@ class _StudentHomePageState extends State<StudentHomePage> {
                           ],
                         ),
                       ),
+
+                    // ------------------------------------------------
+                    // NEW FEEDBACK FROM TUTOR
+                    // ------------------------------------------------
+                    StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                      stream: FirebaseFirestore.instance
+                          .collection('tutor_feedback')
+                          .where(
+                            'studentId',
+                            isEqualTo: widget.profile.uid,
+                          )
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        final unreadCount = snapshot.data?.docs
+                                .where(
+                                  (doc) =>
+                                      doc.data()['readByStudent'] != true,
+                                )
+                                .length ??
+                            0;
+
+                        if (unreadCount == 0) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return InkWell(
+                          onTap: () => widget.onNavigate(4),
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.only(bottom: 20),
+                            padding: const EdgeInsets.all(15),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8EAF6),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFFB8C0EA),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    const Icon(
+                                      Icons.notifications_active_rounded,
+                                      color: Color(0xFF3F51B5),
+                                      size: 28,
+                                    ),
+                                    Positioned(
+                                      right: -8,
+                                      top: -8,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(5),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Text(
+                                          "$unreadCount",
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Text(
+                                    unreadCount == 1
+                                        ? "You have 1 new feedback message from your tutor."
+                                        : "You have $unreadCount new feedback messages from your tutor.",
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF283593),
+                                    ),
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: Color(0xFF3F51B5),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
 
                     // ------------------------------------------------
                     // ASSIGNED TUTOR
@@ -1564,9 +1663,9 @@ class _StudentTestsPageState extends State<StudentTestsPage> {
               child: Column(
                 children: [
                   const Icon(
-                    Icons.assignment,
+                    Icons.assignment_rounded,
                     size: 55,
-                    color: Colors.deepPurple,
+                    color: Color(0xFF3F51B5),
                   ),
                   const SizedBox(height: 12),
                   const Text(
@@ -1595,10 +1694,10 @@ class _StudentTestsPageState extends State<StudentTestsPage> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: _startTest,
-                      icon: const Icon(Icons.play_arrow),
+                      icon: const Icon(Icons.play_arrow_rounded),
                       label: Text(
                         previousAttempts == 0
-                            ? "Start Test"
+                            ? "Start Assessment"
                             : "Attempt Again",
                       ),
                     ),
@@ -1609,7 +1708,8 @@ class _StudentTestsPageState extends State<StudentTestsPage> {
           ),
           const SizedBox(height: 16),
           const Text(
-            "The correct answers are not shown until you submit the test.",
+            "Answer every question and submit it. "
+            "Your tutor will review the submission and release the mark.",
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.grey,
@@ -1661,10 +1761,9 @@ class _StudentTestAttemptPageState
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text("Submit Test?"),
+          title: const Text("Submit Assessment?"),
           content: const Text(
-            "You have answered all questions. "
-            "Do you want to submit your test now?",
+            "Your answers will be sent to your tutor for review.",
           ),
           actions: [
             TextButton(
@@ -1692,7 +1791,6 @@ class _StudentTestAttemptPageState
 
     try {
       int score = 0;
-
       final Map<String, dynamic> answerDetails = {};
 
       for (final doc in widget.questions) {
@@ -1719,6 +1817,7 @@ class _StudentTestAttemptPageState
         'studentId': widget.profile.uid,
         'studentName': widget.profile.name,
         'studentEmail': widget.profile.email,
+        'tutorId': widget.profile.assignedTutorId,
         'batchId': widget.profile.batchId,
         'batchName': widget.profile.batchName,
         'answers': answerDetails,
@@ -1729,6 +1828,9 @@ class _StudentTestAttemptPageState
         'percentage': widget.questions.isEmpty
             ? 0
             : (score / widget.questions.length) * 100,
+        'status': 'submitted',
+        'reviewedByTutor': false,
+        'markReleased': false,
         'submittedAt': FieldValue.serverTimestamp(),
       });
 
@@ -1739,22 +1841,20 @@ class _StudentTestAttemptPageState
         barrierDismissible: false,
         builder: (dialogContext) {
           return AlertDialog(
-            title: const Text("Test Submitted"),
-            content: Column(
+            title: const Text("Assessment Submitted"),
+            content: const Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.check_circle,
                   size: 60,
                   color: Colors.green,
                 ),
-                const SizedBox(height: 14),
+                SizedBox(height: 14),
                 Text(
-                  "Your Score: $score / ${widget.questions.length}",
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  "Your answers were submitted successfully.\n\n"
+                  "Your score will appear in My Marks after your tutor reviews and releases it.",
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
@@ -1779,7 +1879,7 @@ class _StudentTestAttemptPageState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            "Failed to submit test: $e",
+            "Failed to submit assessment: $e",
           ),
         ),
       );
@@ -1907,7 +2007,7 @@ class _StudentTestAttemptPageState
             label: Text(
               isSubmitting
                   ? "Submitting..."
-                  : "Submit Test",
+                  : "Submit Assessment",
             ),
           ),
         ),
@@ -1915,6 +2015,7 @@ class _StudentTestAttemptPageState
     );
   }
 }
+
 
 // ============================================================
 // MARKS / PERFORMANCE PAGE
@@ -1937,7 +2038,8 @@ class _StudentMarksPageState extends State<StudentMarksPage> {
   bool isLoading = true;
   String? errorMessage;
 
-  List<QueryDocumentSnapshot<Map<String, dynamic>>> submissions = [];
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> released = [];
+  int pendingCount = 0;
 
   @override
   void initState() {
@@ -1955,11 +2057,19 @@ class _StudentMarksPageState extends State<StudentMarksPage> {
           )
           .get();
 
-      final docs = snapshot.docs.toList();
+      final allDocs = snapshot.docs.toList();
 
-      docs.sort((a, b) {
-        final aTime = a.data()['submittedAt'];
-        final bTime = b.data()['submittedAt'];
+      final releasedDocs = allDocs
+          .where(
+            (doc) => doc.data()['markReleased'] == true,
+          )
+          .toList();
+
+      releasedDocs.sort((a, b) {
+        final aTime =
+            a.data()['releasedAt'] ?? a.data()['submittedAt'];
+        final bTime =
+            b.data()['releasedAt'] ?? b.data()['submittedAt'];
 
         final aDate =
             aTime is Timestamp ? aTime.toDate() : DateTime(1970);
@@ -1972,7 +2082,9 @@ class _StudentMarksPageState extends State<StudentMarksPage> {
       if (!mounted) return;
 
       setState(() {
-        submissions = docs;
+        released = releasedDocs;
+        pendingCount =
+            allDocs.length - releasedDocs.length;
         isLoading = false;
         errorMessage = null;
       });
@@ -1987,11 +2099,11 @@ class _StudentMarksPageState extends State<StudentMarksPage> {
   }
 
   double get averagePercentage {
-    if (submissions.isEmpty) return 0;
+    if (released.isEmpty) return 0;
 
     double total = 0;
 
-    for (final doc in submissions) {
+    for (final doc in released) {
       final value = doc.data()['percentage'];
 
       if (value is num) {
@@ -1999,7 +2111,7 @@ class _StudentMarksPageState extends State<StudentMarksPage> {
       }
     }
 
-    return total / submissions.length;
+    return total / released.length;
   }
 
   String _formatDate(dynamic value) {
@@ -2011,9 +2123,7 @@ class _StudentMarksPageState extends State<StudentMarksPage> {
 
     return "${date.day.toString().padLeft(2, '0')}/"
         "${date.month.toString().padLeft(2, '0')}/"
-        "${date.year} "
-        "${date.hour.toString().padLeft(2, '0')}:"
-        "${date.minute.toString().padLeft(2, '0')}";
+        "${date.year}";
   }
 
   @override
@@ -2036,34 +2146,36 @@ class _StudentMarksPageState extends State<StudentMarksPage> {
       );
     }
 
-    if (submissions.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.bar_chart,
-              size: 70,
-              color: Colors.grey,
-            ),
-            SizedBox(height: 16),
-            Text(
-              "No assessment marks yet.",
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 17,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return RefreshIndicator(
       onRefresh: _loadMarks,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (pendingCount > 0)
+            Container(
+              padding: const EdgeInsets.all(14),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3E0),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.hourglass_top_rounded,
+                    color: Colors.orange,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      "$pendingCount assessment${pendingCount == 1 ? '' : 's'} "
+                      "awaiting tutor review / mark release.",
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           Card(
             child: Padding(
               padding: const EdgeInsets.all(18),
@@ -2074,14 +2186,14 @@ class _StudentMarksPageState extends State<StudentMarksPage> {
                   Column(
                     children: [
                       Text(
-                        "${submissions.length}",
+                        "${released.length}",
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const Text(
-                        "Attempts",
+                        "Released",
                         style: TextStyle(
                           color: Colors.grey,
                         ),
@@ -2109,56 +2221,81 @@ class _StudentMarksPageState extends State<StudentMarksPage> {
               ),
             ),
           ),
+
           const SizedBox(height: 14),
+
           const Text(
-            "Assessment History",
+            "Assessment Marks",
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
+
           const SizedBox(height: 10),
-          ...submissions.asMap().entries.map((entry) {
-            final attemptNumber =
-                submissions.length - entry.key;
 
-            final data = entry.value.data();
-
-            final score = data['score'] ?? 0;
-            final totalMarks =
-                data['totalMarks'] ?? 0;
-            final percentage =
-                (data['percentage'] is num)
-                    ? (data['percentage'] as num)
-                        .toDouble()
-                    : 0.0;
-
-            return Card(
-              margin: const EdgeInsets.only(bottom: 10),
-              child: ListTile(
-                leading: CircleAvatar(
-                  child: Text(
-                    "$attemptNumber",
+          if (released.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 60),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.bar_chart_rounded,
+                    size: 70,
+                    color: Colors.grey,
                   ),
-                ),
-                title: Text(
-                  "Score: $score / $totalMarks",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
+                  SizedBox(height: 14),
+                  Text(
+                    "No marks have been released yet.",
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 16,
+                    ),
                   ),
-                ),
-                subtitle: Text(
-                  "${percentage.toStringAsFixed(1)}% • "
-                  "${_formatDate(data['submittedAt'])}",
-                ),
+                ],
               ),
-            );
-          }),
+            )
+          else
+            ...released.asMap().entries.map((entry) {
+              final data = entry.value.data();
+
+              final score = data['score'] ?? 0;
+              final totalMarks =
+                  data['totalMarks'] ?? 0;
+              final percentage =
+                  (data['percentage'] is num)
+                      ? (data['percentage'] as num)
+                          .toDouble()
+                      : 0.0;
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 10),
+                child: ListTile(
+                  leading: const CircleAvatar(
+                    child: Icon(Icons.verified_rounded),
+                  ),
+                  title: Text(
+                    "Score: $score / $totalMarks",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Text(
+                    "${percentage.toStringAsFixed(1)}% • "
+                    "${_formatDate(data['releasedAt'] ?? data['submittedAt'])}",
+                  ),
+                  trailing: const Chip(
+                    label: Text("Released"),
+                  ),
+                ),
+              );
+            }),
         ],
       ),
     );
   }
 }
+
 
 // ============================================================
 // FEEDBACK PAGE
@@ -2202,6 +2339,7 @@ class _StudentFeedbackPageState
 
       if (tutorId.isEmpty) {
         if (!mounted) return;
+
         setState(() {
           isLoadingTutor = false;
           mappingMessage =
@@ -2229,8 +2367,10 @@ class _StudentFeedbackPageState
       final data = tutorDoc.data()!;
 
       setState(() {
-        tutorName = data['name']?.toString() ?? 'Assigned Tutor';
-        tutorEmail = data['email']?.toString() ?? '';
+        tutorName =
+            data['name']?.toString() ?? 'Assigned Tutor';
+        tutorEmail =
+            data['email']?.toString() ?? '';
         isLoadingTutor = false;
       });
     } catch (e) {
@@ -2287,6 +2427,7 @@ class _StudentFeedbackPageState
         'batchName': widget.profile.batchName,
         'message': message,
         'status': 'sent',
+        'readByTutor': false,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -2320,14 +2461,47 @@ class _StudentFeedbackPageState
     }
   }
 
-  @override
-  void dispose() {
-    feedbackController.dispose();
-    super.dispose();
+  Future<void> _markTutorFeedbackRead() async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('tutor_feedback')
+        .where(
+          'studentId',
+          isEqualTo: widget.profile.uid,
+        )
+        .get();
+
+    final batch = FirebaseFirestore.instance.batch();
+    bool hasChanges = false;
+
+    for (final doc in snapshot.docs) {
+      if (doc.data()['readByStudent'] != true) {
+        batch.update(
+          doc.reference,
+          {
+            'readByStudent': true,
+            'readByStudentAt': FieldValue.serverTimestamp(),
+          },
+        );
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      await batch.commit();
+    }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  String _formatDate(dynamic value) {
+    if (value is! Timestamp) return '';
+
+    final date = value.toDate();
+
+    return "${date.day.toString().padLeft(2, '0')}/"
+        "${date.month.toString().padLeft(2, '0')}/"
+        "${date.year}";
+  }
+
+  Widget _sendTab() {
     if (isLoadingTutor) {
       return const Center(
         child: CircularProgressIndicator(),
@@ -2338,7 +2512,7 @@ class _StudentFeedbackPageState
       padding: const EdgeInsets.all(20),
       children: [
         const Text(
-          "Feedback",
+          "Send Feedback",
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -2346,7 +2520,7 @@ class _StudentFeedbackPageState
         ),
         const SizedBox(height: 8),
         const Text(
-          "Your feedback will be sent directly to the tutor assigned by the admin.",
+          "Your feedback will be sent directly to your assigned tutor.",
           style: TextStyle(
             color: Colors.grey,
           ),
@@ -2376,7 +2550,6 @@ class _StudentFeedbackPageState
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Icon(
                   Icons.info_outline,
@@ -2434,7 +2607,145 @@ class _StudentFeedbackPageState
       ],
     );
   }
+
+  Widget _receivedTab() {
+    return StreamBuilder<
+        QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('tutor_feedback')
+          .where(
+            'studentId',
+            isEqualTo: widget.profile.uid,
+          )
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState ==
+            ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              "Could not load tutor feedback.\n${snapshot.error}",
+              textAlign: TextAlign.center,
+            ),
+          );
+        }
+
+        final docs = snapshot.data?.docs.toList() ?? [];
+
+        docs.sort((a, b) {
+          final aValue = a.data()['createdAt'];
+          final bValue = b.data()['createdAt'];
+
+          final aDate = aValue is Timestamp
+              ? aValue.toDate()
+              : DateTime(1970);
+
+          final bDate = bValue is Timestamp
+              ? bValue.toDate()
+              : DateTime(1970);
+
+          return bDate.compareTo(aDate);
+        });
+
+        if (docs.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                "No feedback received from your tutor yet.",
+                style: TextStyle(
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(18),
+          itemCount: docs.length,
+          itemBuilder: (context, index) {
+            final data = docs[index].data();
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: ListTile(
+                leading: const CircleAvatar(
+                  child: Icon(Icons.feedback_rounded),
+                ),
+                title: Text(
+                  data['category']?.toString() ?? 'Tutor Feedback',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    "${data['message']?.toString() ?? ''}\n"
+                    "Rating: ${data['rating'] ?? '-'} / 5"
+                    "${_formatDate(data['createdAt']).isEmpty ? '' : ' • ${_formatDate(data['createdAt'])}'}",
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    feedbackController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          Material(
+            color: Colors.white,
+            child: TabBar(
+              onTap: (index) {
+                if (index == 1) {
+                  _markTutorFeedbackRead();
+                }
+              },
+              tabs: const [
+                Tab(
+                  icon: Icon(Icons.send_rounded),
+                  text: "Send",
+                ),
+                Tab(
+                  icon: Icon(Icons.inbox_rounded),
+                  text: "Tutor Feedback",
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                _sendTab(),
+                _receivedTab(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
+
 
 // ============================================================
 // OPEN MATERIAL URL

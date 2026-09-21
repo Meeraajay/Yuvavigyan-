@@ -217,6 +217,86 @@ class _TutorHomePageState extends State<TutorHomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: FirebaseFirestore.instance
+                      .collection('feedback')
+                      .where(
+                        'tutorId',
+                        isEqualTo:
+                            FirebaseAuth.instance.currentUser?.uid ??
+                                '__no_tutor__',
+                      )
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    final unreadCount = snapshot.data?.docs
+                            .where(
+                              (doc) =>
+                                  doc.data()['readByTutor'] != true,
+                            )
+                            .length ??
+                        0;
+
+                    if (unreadCount == 0) {
+                      return const SizedBox.shrink();
+                    }
+
+                    return InkWell(
+                      onTap: () => widget.onNavigate(4),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 20),
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8EAF6),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xFFB8C0EA),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.notifications_active_rounded,
+                              color: Color(0xFF3F51B5),
+                              size: 28,
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Text(
+                                unreadCount == 1
+                                    ? "1 new feedback message from a student."
+                                    : "$unreadCount new feedback messages from students.",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF283593),
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                "$unreadCount",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
                 const Text(
                   "Overview",
                   style: TextStyle(

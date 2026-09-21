@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'tutor_home_page.dart';
 import 'tutor_materials_page.dart';
 import 'students/assigned_students_page.dart';
-import 'evaluation_history_page.dart';
+import 'tutor_assessments_page.dart';
 import 'feedback_page.dart';
 
 class TutorDashboard extends StatefulWidget {
@@ -32,7 +32,7 @@ class _TutorDashboardState extends State<TutorDashboard> {
       ),
       const AssignedStudentsPage(),
       const TutorMaterialsPage(),
-      const EvaluationHistoryPage(),
+      const TutorAssessmentsPage(),
       const FeedbackPage(),
     ];
 
@@ -55,7 +55,7 @@ class _TutorDashboardState extends State<TutorDashboard> {
       NavigationDestination(
         icon: Icon(Icons.grading_outlined),
         selectedIcon: Icon(Icons.grading_rounded),
-        label: "Evaluate",
+        label: "Assessments",
       ),
       NavigationDestination(
         icon: Icon(Icons.feedback_outlined),

@@ -248,6 +248,7 @@ class _FeedbackPageState
             selectedCategory,
         'rating': rating.toInt(),
         'message': message,
+        'readByStudent': false,
         'createdAt':
             FieldValue.serverTimestamp(),
       });
@@ -566,6 +567,46 @@ class _FeedbackPageState
     );
   }
 
+  Future<void> _markStudentMessagesRead() async {
+    final tutor =
+        FirebaseAuth.instance.currentUser;
+
+    if (tutor == null) return;
+
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('feedback')
+            .where(
+              'tutorId',
+              isEqualTo: tutor.uid,
+            )
+            .get();
+
+    final batch =
+        FirebaseFirestore.instance.batch();
+
+    bool hasChanges = false;
+
+    for (final doc in snapshot.docs) {
+      if (doc.data()['readByTutor'] != true) {
+        batch.update(
+          doc.reference,
+          {
+            'readByTutor': true,
+            'readByTutorAt':
+                FieldValue.serverTimestamp(),
+          },
+        );
+
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      await batch.commit();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tutorId =
@@ -589,8 +630,13 @@ class _FeedbackPageState
             0xFF222222,
           ),
           elevation: 0.5,
-          bottom: const TabBar(
-            tabs: [
+          bottom: TabBar(
+            onTap: (index) {
+              if (index == 1) {
+                _markStudentMessagesRead();
+              }
+            },
+            tabs: const [
               Tab(
                 icon: Icon(
                   Icons
