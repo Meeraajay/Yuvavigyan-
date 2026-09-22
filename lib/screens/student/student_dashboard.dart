@@ -9,14 +9,17 @@ import 'package:url_launcher/url_launcher.dart';
 // ============================================================
 
 class StudentDashboard extends StatefulWidget {
-  const StudentDashboard({super.key});
+  const StudentDashboard({
+    super.key,
+  });
 
   @override
-  State<StudentDashboard> createState() => _StudentDashboardState();
+  State<StudentDashboard> createState() =>
+      _StudentDashboardState();
 }
 
-class _StudentDashboardState extends State<StudentDashboard> {
-  int index = 0;
+class _StudentDashboardState
+    extends State<StudentDashboard> {
   bool isLoading = true;
   String? errorMessage;
   StudentProfile? profile;
@@ -29,13 +32,17 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
   Future<void> _loadStudentProfile() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      final user =
+          FirebaseAuth.instance.currentUser;
 
       if (user == null) {
-        throw Exception("No authenticated student found.");
+        throw Exception(
+          "No authenticated student found.",
+        );
       }
 
-      final profileData = await _findStudentProfile(user);
+      final profileData =
+          await _findStudentProfile(user);
 
       if (!mounted) return;
 
@@ -53,13 +60,20 @@ class _StudentDashboardState extends State<StudentDashboard> {
     }
   }
 
-  Future<StudentProfile> _findStudentProfile(User user) async {
-    final firestore = FirebaseFirestore.instance;
+  Future<StudentProfile> _findStudentProfile(
+    User user,
+  ) async {
+    final firestore =
+        FirebaseFirestore.instance;
 
-    final userDoc =
-        await firestore.collection('users').doc(user.uid).get();
+    // 1. users/{uid}
+    final userDoc = await firestore
+        .collection('users')
+        .doc(user.uid)
+        .get();
 
-    if (userDoc.exists && userDoc.data() != null) {
+    if (userDoc.exists &&
+        userDoc.data() != null) {
       return StudentProfile.fromMap(
         uid: user.uid,
         email: user.email ?? '',
@@ -67,10 +81,14 @@ class _StudentDashboardState extends State<StudentDashboard> {
       );
     }
 
-    final studentDoc =
-        await firestore.collection('students').doc(user.uid).get();
+    // 2. students/{uid}
+    final studentDoc = await firestore
+        .collection('students')
+        .doc(user.uid)
+        .get();
 
-    if (studentDoc.exists && studentDoc.data() != null) {
+    if (studentDoc.exists &&
+        studentDoc.data() != null) {
       return StudentProfile.fromMap(
         uid: user.uid,
         email: user.email ?? '',
@@ -78,9 +96,13 @@ class _StudentDashboardState extends State<StudentDashboard> {
       );
     }
 
+    // 3. users where uid matches
     final usersQuery = await firestore
         .collection('users')
-        .where('uid', isEqualTo: user.uid)
+        .where(
+          'uid',
+          isEqualTo: user.uid,
+        )
         .limit(1)
         .get();
 
@@ -92,9 +114,13 @@ class _StudentDashboardState extends State<StudentDashboard> {
       );
     }
 
+    // 4. students where uid matches
     final studentsQuery = await firestore
         .collection('students')
-        .where('uid', isEqualTo: user.uid)
+        .where(
+          'uid',
+          isEqualTo: user.uid,
+        )
         .limit(1)
         .get();
 
@@ -102,26 +128,53 @@ class _StudentDashboardState extends State<StudentDashboard> {
       return StudentProfile.fromMap(
         uid: user.uid,
         email: user.email ?? '',
-        data: studentsQuery.docs.first.data(),
+        data:
+            studentsQuery.docs.first.data(),
       );
     }
 
     return StudentProfile(
       uid: user.uid,
       email: user.email ?? '',
-      name: user.displayName?.trim().isNotEmpty == true
-          ? user.displayName!.trim()
-          : 'Student',
+      name:
+          user.displayName
+                      ?.trim()
+                      .isNotEmpty ==
+                  true
+              ? user.displayName!.trim()
+              : 'Student',
       batchId: '',
       batchName: '',
       assignedTutorId: '',
     );
   }
 
-  void _goToPage(int pageIndex) {
-    setState(() {
-      index = pageIndex;
-    });
+  // ==========================================================
+  // OPEN STUDENT MAIN TAB
+  // ==========================================================
+
+  void _openTab(int pageIndex) {
+    if (pageIndex < 1 ||
+        pageIndex > 4) {
+      return;
+    }
+
+    final student = profile;
+
+    if (student == null) {
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            _StudentTabPage(
+          profile: student,
+          initialIndex: pageIndex,
+        ),
+      ),
+    );
   }
 
   @override
@@ -129,7 +182,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
     if (isLoading) {
       return const Scaffold(
         body: Center(
-          child: CircularProgressIndicator(),
+          child:
+              CircularProgressIndicator(),
         ),
       );
     }
@@ -137,14 +191,19 @@ class _StudentDashboardState extends State<StudentDashboard> {
     if (errorMessage != null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text("Student Dashboard"),
+          title: const Text(
+            "Student Dashboard",
+          ),
         ),
         body: Center(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding:
+                const EdgeInsets.all(24),
             child: Text(
-              "Could not load student profile.\n\n$errorMessage",
-              textAlign: TextAlign.center,
+              "Could not load student profile."
+              "\n\n$errorMessage",
+              textAlign:
+                  TextAlign.center,
             ),
           ),
         ),
@@ -153,66 +212,227 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
     final student = profile!;
 
-    final pages = [
-      StudentHomePage(
-        profile: student,
-        onNavigate: _goToPage,
-      ),
-      StudentMaterialsPage(profile: student),
-      StudentTestsPage(profile: student),
-      StudentMarksPage(profile: student),
-      StudentFeedbackPage(profile: student),
-    ];
-
-    const pageTitles = [
-      "",
-      "Learning Materials",
-      "Tests",
-      "My Marks",
-      "Feedback",
-    ];
+    // ==========================================================
+    // STUDENT HOME
+    // ==========================================================
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FC),
-      appBar: index == 0
-          ? null
-          : AppBar(
-              title: Text(pageTitles[index]),
-              centerTitle: true,
-              backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF222222),
-              elevation: 0.5,
-            ),
-      body: pages[index],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: index,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFF3F51B5),
-        unselectedItemColor: Colors.grey,
+      backgroundColor:
+          const Color(0xFFF7F8FC),
+
+      body: StudentHomePage(
+        profile: student,
+        onNavigate: _openTab,
+      ),
+
+      bottomNavigationBar:
+          BottomNavigationBar(
+        currentIndex: 0,
+        type:
+            BottomNavigationBarType.fixed,
+        backgroundColor:
+            Colors.white,
+        selectedItemColor:
+            const Color(0xFF3F51B5),
+        unselectedItemColor:
+            Colors.grey,
         selectedFontSize: 11,
         unselectedFontSize: 11,
         elevation: 12,
-        onTap: _goToPage,
+
+        onTap: (pageIndex) {
+          if (pageIndex == 0) {
+            return;
+          }
+
+          _openTab(pageIndex);
+        },
+
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
+            icon: Icon(
+              Icons.home_rounded,
+            ),
             label: "Home",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.folder_rounded),
+            icon: Icon(
+              Icons.folder_rounded,
+            ),
             label: "Materials",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.quiz_rounded),
+            icon: Icon(
+              Icons.quiz_rounded,
+            ),
             label: "Tests",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart_rounded),
+            icon: Icon(
+              Icons.bar_chart_rounded,
+            ),
             label: "Marks",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.feedback_rounded),
+            icon: Icon(
+              Icons.feedback_rounded,
+            ),
+            label: "Feedback",
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// STUDENT MAIN TAB ROUTE
+// ============================================================
+
+class _StudentTabPage
+    extends StatefulWidget {
+  final StudentProfile profile;
+  final int initialIndex;
+
+  const _StudentTabPage({
+    required this.profile,
+    required this.initialIndex,
+  });
+
+  @override
+  State<_StudentTabPage> createState() =>
+      _StudentTabPageState();
+}
+
+class _StudentTabPageState
+    extends State<_StudentTabPage> {
+  late int index;
+
+  static const pageTitles = [
+    "",
+    "Learning Materials",
+    "Tests",
+    "My Marks",
+    "Feedback",
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+
+    index = widget.initialIndex;
+  }
+
+  void _navigateToPage(
+    int pageIndex,
+  ) {
+    // Home selected
+    if (pageIndex == 0) {
+      Navigator.pop(context);
+      return;
+    }
+
+    if (pageIndex < 1 ||
+        pageIndex > 4) {
+      return;
+    }
+
+    setState(() {
+      index = pageIndex;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pages = [
+      const SizedBox.shrink(),
+
+      StudentMaterialsPage(
+        profile: widget.profile,
+      ),
+
+      StudentTestsPage(
+        profile: widget.profile,
+      ),
+
+      StudentMarksPage(
+        profile: widget.profile,
+      ),
+
+      StudentFeedbackPage(
+        profile: widget.profile,
+      ),
+    ];
+
+    return Scaffold(
+      backgroundColor:
+          const Color(0xFFF7F8FC),
+
+      // Since this whole screen was opened
+      // using Navigator.push, Flutter
+      // automatically displays ← here.
+      appBar: AppBar(
+        title: Text(
+          pageTitles[index],
+        ),
+        centerTitle: true,
+        backgroundColor:
+            Colors.white,
+        foregroundColor:
+            const Color(0xFF222222),
+        elevation: 0.5,
+      ),
+
+      body: IndexedStack(
+        index: index,
+        children: pages,
+      ),
+
+      bottomNavigationBar:
+          BottomNavigationBar(
+        currentIndex: index,
+        type:
+            BottomNavigationBarType.fixed,
+        backgroundColor:
+            Colors.white,
+        selectedItemColor:
+            const Color(0xFF3F51B5),
+        unselectedItemColor:
+            Colors.grey,
+        selectedFontSize: 11,
+        unselectedFontSize: 11,
+        elevation: 12,
+        onTap: _navigateToPage,
+
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.home_rounded,
+            ),
+            label: "Home",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.folder_rounded,
+            ),
+            label: "Materials",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.quiz_rounded,
+            ),
+            label: "Tests",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.bar_chart_rounded,
+            ),
+            label: "Marks",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.feedback_rounded,
+            ),
             label: "Feedback",
           ),
         ],

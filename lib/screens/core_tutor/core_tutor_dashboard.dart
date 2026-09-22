@@ -135,15 +135,154 @@ List<QueryDocumentSnapshot<Map<String, dynamic>>> sortByCreated(
 // CORE TUTOR DASHBOARD
 // ============================================================
 
-class CoreTutorDashboard extends StatefulWidget {
-  const CoreTutorDashboard({super.key});
+class CoreTutorDashboard
+    extends StatefulWidget {
+  const CoreTutorDashboard({
+    super.key,
+  });
 
   @override
-  State<CoreTutorDashboard> createState() => _CoreTutorDashboardState();
+  State<CoreTutorDashboard>
+      createState() =>
+          _CoreTutorDashboardState();
 }
 
-class _CoreTutorDashboardState extends State<CoreTutorDashboard> {
-  int index = 0;
+class _CoreTutorDashboardState
+    extends State<CoreTutorDashboard> {
+  // ==========================================================
+  // OPEN CORE TUTOR TAB AS REAL ROUTE
+  // ==========================================================
+
+  void _openTab(int pageIndex) {
+    if (pageIndex < 1 ||
+        pageIndex > 6) {
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            _CoreTutorTabPage(
+          initialIndex: pageIndex,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: kBg,
+
+      // ======================================================
+      // HOME
+      // ======================================================
+
+      body: CoreHomePage(
+        onNavigate: _openTab,
+      ),
+
+      bottomNavigationBar:
+          BottomNavigationBar(
+        currentIndex: 0,
+        type:
+            BottomNavigationBarType.fixed,
+        backgroundColor:
+            Colors.white,
+        elevation: 16,
+        iconSize: 24,
+        selectedItemColor:
+            kPrimary,
+        unselectedItemColor:
+            Colors.grey.shade500,
+        selectedFontSize: 11,
+        unselectedFontSize: 10,
+
+        selectedLabelStyle:
+            const TextStyle(
+          fontWeight:
+              FontWeight.w700,
+        ),
+
+        onTap: (pageIndex) {
+          if (pageIndex == 0) {
+            return;
+          }
+
+          _openTab(pageIndex);
+        },
+
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.home_rounded,
+            ),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.menu_book_rounded,
+            ),
+            label: 'Courses',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.folder_rounded,
+            ),
+            label: 'Materials',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.quiz_rounded,
+            ),
+            label: 'Tests',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.assessment_rounded,
+            ),
+            label: 'Reports',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.people_alt_rounded,
+            ),
+            label: 'Mapping',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.feedback_rounded,
+            ),
+            label: 'Feedback',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// CORE TUTOR MAIN TAB ROUTE
+// ============================================================
+
+class _CoreTutorTabPage
+    extends StatefulWidget {
+  final int initialIndex;
+
+  const _CoreTutorTabPage({
+    required this.initialIndex,
+  });
+
+  @override
+  State<_CoreTutorTabPage>
+      createState() =>
+          _CoreTutorTabPageState();
+}
+
+class _CoreTutorTabPageState
+    extends State<_CoreTutorTabPage> {
+  late int index;
 
   static const List<String> _titles = [
     'Home',
@@ -156,15 +295,36 @@ class _CoreTutorDashboardState extends State<CoreTutorDashboard> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+
+    index = widget.initialIndex;
+  }
+
+  void _navigateToPage(
+    int pageIndex,
+  ) {
+    // Selecting Home returns to
+    // Core Tutor Home.
+    if (pageIndex == 0) {
+      Navigator.pop(context);
+      return;
+    }
+
+    if (pageIndex < 1 ||
+        pageIndex > 6) {
+      return;
+    }
+
+    setState(() {
+      index = pageIndex;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
-      CoreHomePage(
-        onNavigate: (value) {
-          setState(() {
-            index = value;
-          });
-        },
-      ),
+      const SizedBox.shrink(),
       const CoursesPage(),
       const MaterialsPage(),
       const TestsPage(),
@@ -175,52 +335,87 @@ class _CoreTutorDashboardState extends State<CoreTutorDashboard> {
 
     return Scaffold(
       backgroundColor: kBg,
-      // The home tab draws its own welcome header.
-      appBar: index == 0 ? null : gradientAppBar(_titles[index]),
-      body: pages[index],
-      bottomNavigationBar: BottomNavigationBar(
+
+      // Because _CoreTutorTabPage itself
+      // is Navigator.push()'d,
+      // gradientAppBar automatically gets
+      // the Flutter ← back button.
+      appBar:
+          gradientAppBar(
+        _titles[index],
+      ),
+
+      body: IndexedStack(
+        index: index,
+        children: pages,
+      ),
+
+      bottomNavigationBar:
+          BottomNavigationBar(
         currentIndex: index,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
+        type:
+            BottomNavigationBarType.fixed,
+        backgroundColor:
+            Colors.white,
         elevation: 16,
         iconSize: 24,
-        selectedItemColor: kPrimary,
-        unselectedItemColor: Colors.grey.shade500,
+        selectedItemColor:
+            kPrimary,
+        unselectedItemColor:
+            Colors.grey.shade500,
         selectedFontSize: 11,
         unselectedFontSize: 10,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700),
-        onTap: (value) {
-          setState(() {
-            index = value;
-          });
-        },
+
+        selectedLabelStyle:
+            const TextStyle(
+          fontWeight:
+              FontWeight.w700,
+        ),
+
+        onTap:
+            _navigateToPage,
+
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
+            icon: Icon(
+              Icons.home_rounded,
+            ),
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book_rounded),
+            icon: Icon(
+              Icons.menu_book_rounded,
+            ),
             label: 'Courses',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.folder_rounded),
+            icon: Icon(
+              Icons.folder_rounded,
+            ),
             label: 'Materials',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.quiz_rounded),
+            icon: Icon(
+              Icons.quiz_rounded,
+            ),
             label: 'Tests',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.assessment_rounded),
+            icon: Icon(
+              Icons.assessment_rounded,
+            ),
             label: 'Reports',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.people_alt_rounded),
+            icon: Icon(
+              Icons.people_alt_rounded,
+            ),
             label: 'Mapping',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.feedback_rounded),
+            icon: Icon(
+              Icons.feedback_rounded,
+            ),
             label: 'Feedback',
           ),
         ],
