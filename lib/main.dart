@@ -1,50 +1,141 @@
-import 'package:flutter/material.dart'; 
-import 'package:firebase_core/firebase_core.dart'; 
-import 'firebase_options.dart'; 
-import 'screens/auth/login_screen.dart'; 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
 
- 
+import 'firebase_options.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/auth/role_router.dart';
 
-void main() async { 
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
- WidgetsFlutterBinding.ensureInitialized(); 
+  await Firebase.initializeApp(
+    options:
+        DefaultFirebaseOptions.currentPlatform,
+  );
 
- 
+  runApp(
+    const YuvavigyanApp(),
+  );
+}
 
- await Firebase.initializeApp( 
+class YuvavigyanApp
+    extends StatelessWidget {
+  const YuvavigyanApp({
+    super.key,
+  });
 
- options: DefaultFirebaseOptions.currentPlatform, 
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner:
+          false,
 
- ); 
+      title: 'Yuvavigyan',
 
- 
+      home: const SessionGate(),
 
- runApp(const YuvavigyanApp()); 
+      routes: {
+        '/login': (_) =>
+            const LoginScreen(),
+      },
+    );
+  }
+}
 
-} 
+// ============================================================
+// SESSION GATE
+// ============================================================
+//
+// IMPORTANT:
+//
+// If Firebase says a user is already logged in,
+// DO NOT sign them out.
+//
+// This allows:
+//
+// Dashboard
+// → Browser Refresh
+// → Dashboard again
+//
+// Firebase persistence determines whether the login
+// survives browser close/reopen.
+// ============================================================
 
- 
+class SessionGate
+    extends StatefulWidget {
+  const SessionGate({
+    super.key,
+  });
 
-class YuvavigyanApp extends StatelessWidget { 
+  @override
+  State<SessionGate> createState() =>
+      _SessionGateState();
+}
 
- const YuvavigyanApp({super.key}); 
+class _SessionGateState
+    extends State<SessionGate> {
+  bool isChecking = true;
+  bool userLoggedIn = false;
 
- 
+  @override
+  void initState() {
+    super.initState();
 
- @override 
+    _checkSession();
+  }
 
- Widget build(BuildContext context) { 
+  Future<void> _checkSession() async {
+    // Give Firebase Auth time to restore
+    // the persisted browser session.
+    await FirebaseAuth.instance
+        .authStateChanges()
+        .first;
 
- return const MaterialApp( 
+    final currentUser =
+        FirebaseAuth.instance.currentUser;
 
- debugShowCheckedModeBanner: false, 
+    if (!mounted) return;
 
- home: LoginScreen(),  // ✅ Now it opens Login Screen 
+    setState(() {
+      userLoggedIn =
+          currentUser != null;
 
-  ); 
+      isChecking = false;
+    });
+  }
 
- } 
+  @override
+  Widget build(BuildContext context) {
+    // ========================================================
+    // CHECKING SESSION
+    // ========================================================
 
-} 
+    if (isChecking) {
+      return const Scaffold(
+        body: Center(
+          child:
+              CircularProgressIndicator(),
+        ),
+      );
+    }
 
- 
+    // ========================================================
+    // USER ALREADY LOGGED IN
+    //
+    // Happens after dashboard refresh.
+    // RoleRouter gets role from Firestore
+    // and reopens correct dashboard.
+    // ========================================================
+
+    if (userLoggedIn) {
+      return const RoleRouter();
+    }
+
+    // ========================================================
+    // NO ACTIVE SESSION
+    // ========================================================
+
+    return const LoginScreen();
+  }
+}

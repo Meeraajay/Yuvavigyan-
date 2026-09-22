@@ -15,8 +15,16 @@ class _TutorAssessmentsPageState
   bool isLoading = true;
   String? errorMessage;
 
-  List<QueryDocumentSnapshot<Map<String, dynamic>>> questions = [];
-  List<QueryDocumentSnapshot<Map<String, dynamic>>> submissions = [];
+  List<_TutorBatch> batches = [];
+
+  List<QueryDocumentSnapshot<Map<String, dynamic>>>
+      testFolders = [];
+
+  List<QueryDocumentSnapshot<Map<String, dynamic>>>
+      questions = [];
+
+  List<QueryDocumentSnapshot<Map<String, dynamic>>>
+      submissions = [];
 
   @override
   void initState() {
@@ -24,65 +32,247 @@ class _TutorAssessmentsPageState
     _loadData();
   }
 
+  String _text(dynamic value) {
+    return value?.toString().trim() ?? '';
+  }
+
+  String _referenceId(dynamic value) {
+    if (value is DocumentReference) {
+      return value.id;
+    }
+
+    return _text(value);
+  }
+
+  String _folderName(
+    QueryDocumentSnapshot<Map<String, dynamic>> folder,
+  ) {
+    final data = folder.data();
+
+    final possibleNames = [
+      data['name'],
+      data['title'],
+      data['testName'],
+      data['folderName'],
+    ];
+
+    for (final value in possibleNames) {
+      final text = _text(value);
+
+      if (text.isNotEmpty) {
+        return text;
+      }
+    }
+
+    return "Test";
+  }
+
+  bool _belongsToBatch(
+    Map<String, dynamic> data,
+    _TutorBatch batch,
+  ) {
+    final batchId = _text(data['batchId']);
+    final batchName = _text(data['batchName']);
+
+    if (batch.id.isNotEmpty) {
+      return batchId == batch.id;
+    }
+
+    return batchName == batch.name;
+  }
+
+  bool _belongsToAnyAssignedBatch(
+    Map<String, dynamic> data,
+    List<_TutorBatch> assignedBatches,
+  ) {
+    for (final batch in assignedBatches) {
+      if (_belongsToBatch(data, batch)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  bool _questionBelongsToFolder(
+    Map<String, dynamic> data,
+    String folderId,
+    String folderName,
+  ) {
+    final possibleIds = [
+      _referenceId(data['testFolderId']),
+      _referenceId(data['folderId']),
+      _referenceId(data['testId']),
+    ];
+
+    for (final id in possibleIds) {
+      if (id.isNotEmpty && id == folderId) {
+        return true;
+      }
+    }
+
+    final possibleNames = [
+      _text(data['testFolderName']),
+      _text(data['folderName']),
+      _text(data['testName']),
+    ];
+
+    for (final name in possibleNames) {
+      if (name.isNotEmpty && name == folderName) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // ============================================================
+  // LOAD DATA
+  // ============================================================
+
   Future<void> _loadData() async {
     try {
-      final tutor = FirebaseAuth.instance.currentUser;
+      final tutor =
+          FirebaseAuth.instance.currentUser;
 
       if (tutor == null) {
-        throw Exception("No tutor is currently logged in.");
+        throw Exception(
+          "No tutor is currently logged in.",
+        );
       }
 
-      final studentsSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where(
-            'assignedTutorId',
-            isEqualTo: tutor.uid,
-          )
-          .get();
+      // ----------------------------------------------------------
+      // GET STUDENTS ASSIGNED TO THIS TUTOR
+      // ----------------------------------------------------------
 
-      final activeStudents = studentsSnapshot.docs.where((doc) {
+      final studentsSnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .where(
+                'assignedTutorId',
+                isEqualTo: tutor.uid,
+              )
+              .get();
+
+      final activeStudents =
+          studentsSnapshot.docs.where((doc) {
         final data = doc.data();
 
         return data['role']?.toString() == 'student' &&
             data['isActive'] != false;
       }).toList();
 
-      final studentIds = activeStudents.map((doc) => doc.id).toSet();
+      final studentIds =
+          activeStudents.map((doc) => doc.id).toSet();
 
-      final batchIds = activeStudents
-          .map(
-            (doc) => doc.data()['batchId']?.toString().trim() ?? '',
-          )
-          .where((id) => id.isNotEmpty)
-          .toSet();
+      // ----------------------------------------------------------
+      // GET UNIQUE BATCHES OF ASSIGNED STUDENTS
+      // ----------------------------------------------------------
 
-      final testsSnapshot =
-          await FirebaseFirestore.instance.collection('tests').get();
+      final Map<String, _TutorBatch>
+          batchMap = {};
 
-      final tutorQuestions = testsSnapshot.docs.where((doc) {
-        final batchId = doc.data()['batchId']?.toString() ?? '';
-        return batchIds.contains(batchId);
+      for (final student in activeStudents) {
+        final data = student.data();
+
+        final batchId =
+            _text(data['batchId']);
+
+        final batchName =
+            _text(data['batchName']);
+
+        if (batchId.isNotEmpty) {
+          batchMap.putIfAbsent(
+            batchId,
+            () => _TutorBatch(
+              id: batchId,
+              name: batchName.isNotEmpty
+                  ? batchName
+                  : batchId,
+            ),
+          );
+        } else if (batchName.isNotEmpty) {
+          batchMap.putIfAbsent(
+            "name:$batchName",
+            () => _TutorBatch(
+              id: '',
+              name: batchName,
+            ),
+          );
+        }
+      }
+
+      final assignedBatches =
+          batchMap.values.toList();
+
+      // ----------------------------------------------------------
+      // GET TEST FOLDERS
+      // ----------------------------------------------------------
+
+      final folderSnapshot =
+          await FirebaseFirestore.instance
+              .collection('testFolders')
+              .get();
+
+      final assignedFolders =
+          folderSnapshot.docs.where((doc) {
+        return _belongsToAnyAssignedBatch(
+          doc.data(),
+          assignedBatches,
+        );
       }).toList();
 
-      final submissionSnapshot = await FirebaseFirestore.instance
-          .collection('student_test_submissions')
-          .get();
+      // ----------------------------------------------------------
+      // GET QUESTIONS
+      // ----------------------------------------------------------
 
-      final tutorSubmissions = submissionSnapshot.docs.where((doc) {
+      final testsSnapshot =
+          await FirebaseFirestore.instance
+              .collection('tests')
+              .get();
+
+      final assignedQuestions =
+          testsSnapshot.docs.where((doc) {
+        return _belongsToAnyAssignedBatch(
+          doc.data(),
+          assignedBatches,
+        );
+      }).toList();
+
+      // ----------------------------------------------------------
+      // GET STUDENT SUBMISSIONS
+      // ----------------------------------------------------------
+
+      final submissionSnapshot =
+          await FirebaseFirestore.instance
+              .collection(
+                'student_test_submissions',
+              )
+              .get();
+
+      final tutorSubmissions =
+          submissionSnapshot.docs.where((doc) {
         return studentIds.contains(
           doc.data()['studentId']?.toString(),
         );
       }).toList();
 
       tutorSubmissions.sort((a, b) {
-        final aTime = a.data()['submittedAt'];
-        final bTime = b.data()['submittedAt'];
+        final aTime =
+            a.data()['submittedAt'];
+
+        final bTime =
+            b.data()['submittedAt'];
 
         final aDate =
-            aTime is Timestamp ? aTime.toDate() : DateTime(1970);
+            aTime is Timestamp
+                ? aTime.toDate()
+                : DateTime(1970);
 
         final bDate =
-            bTime is Timestamp ? bTime.toDate() : DateTime(1970);
+            bTime is Timestamp
+                ? bTime.toDate()
+                : DateTime(1970);
 
         return bDate.compareTo(aDate);
       });
@@ -90,8 +280,11 @@ class _TutorAssessmentsPageState
       if (!mounted) return;
 
       setState(() {
-        questions = tutorQuestions;
+        batches = assignedBatches;
+        testFolders = assignedFolders;
+        questions = assignedQuestions;
         submissions = tutorSubmissions;
+
         isLoading = false;
         errorMessage = null;
       });
@@ -105,8 +298,14 @@ class _TutorAssessmentsPageState
     }
   }
 
+  // ============================================================
+  // DATE
+  // ============================================================
+
   String _formatDate(dynamic value) {
-    if (value is! Timestamp) return "Date unavailable";
+    if (value is! Timestamp) {
+      return "Date unavailable";
+    }
 
     final date = value.toDate();
 
@@ -115,28 +314,75 @@ class _TutorAssessmentsPageState
         "${date.year}";
   }
 
+  // ============================================================
+  // OPEN TEST FOLDER
+  // ============================================================
+
+  void _openTestFolder(
+    _TutorBatch batch,
+    QueryDocumentSnapshot<Map<String, dynamic>> folder,
+  ) {
+    final folderId = folder.id;
+
+    final folderName =
+        _folderName(folder);
+
+    final folderQuestions =
+        questions.where((question) {
+      return _questionBelongsToFolder(
+        question.data(),
+        folderId,
+        folderName,
+      );
+    }).toList();
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            TutorFolderQuestionsPage(
+          batchName: batch.name,
+          testName: folderName,
+          questions: folderQuestions,
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // REVIEW SUBMISSION
+  // ============================================================
+
   Future<void> _openReview(
-    QueryDocumentSnapshot<Map<String, dynamic>> submission,
+    QueryDocumentSnapshot<Map<String, dynamic>>
+        submission,
   ) async {
     final data = submission.data();
 
-    final questionIds = List<String>.from(
-      data['questionIds'] ?? const <String>[],
+    final questionIds =
+        List<String>.from(
+      data['questionIds'] ??
+          const <String>[],
     );
 
-    final answers = Map<String, dynamic>.from(
-      data['answers'] ?? const <String, dynamic>{},
+    final answers =
+        Map<String, dynamic>.from(
+      data['answers'] ??
+          const <String, dynamic>{},
     );
 
-    final List<Map<String, dynamic>> questionData = [];
+    final List<Map<String, dynamic>>
+        questionData = [];
 
     for (final id in questionIds) {
-      final doc = await FirebaseFirestore.instance
-          .collection('tests')
-          .doc(id)
-          .get();
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('tests')
+              .doc(id)
+              .get();
 
-      if (doc.exists && doc.data() != null) {
+      if (doc.exists &&
+          doc.data() != null) {
         questionData.add({
           'id': id,
           ...doc.data()!,
@@ -149,7 +395,8 @@ class _TutorAssessmentsPageState
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => _AssessmentReviewPage(
+        builder: (_) =>
+            _AssessmentReviewPage(
           submissionId: submission.id,
           submissionData: data,
           questions: questionData,
@@ -161,13 +408,17 @@ class _TutorAssessmentsPageState
     _loadData();
   }
 
+  // ============================================================
+  // QUESTIONS TAB
+  // ============================================================
+
   Widget _questionsTab() {
-    if (questions.isEmpty) {
+    if (batches.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            "No assessment questions are available for your students' batches.",
+            "No batches are assigned to your students.",
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.grey,
@@ -177,72 +428,216 @@ class _TutorAssessmentsPageState
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(18),
-      children: [
-        const Text(
-          "Questions for Assigned Batches",
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          "These questions were posted by the Core Tutor.",
-          style: TextStyle(
-            color: Colors.grey,
-          ),
-        ),
-        const SizedBox(height: 18),
-        ...questions.asMap().entries.map((entry) {
-          final data = entry.value.data();
+    return RefreshIndicator(
+      onRefresh: _loadData,
 
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+      child: ListView(
+        padding: const EdgeInsets.all(18),
+
+        children: [
+          const Text(
+            "Tests for Assigned Batches",
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          const Text(
+            "Open a test folder to view the questions uploaded by the Core Tutor.",
+            style: TextStyle(
+              color: Colors.grey,
+            ),
+          ),
+
+          const SizedBox(height: 22),
+
+          ...batches.map((batch) {
+            final foldersForBatch =
+                testFolders.where((folder) {
+              return _belongsToBatch(
+                folder.data(),
+                batch,
+              );
+            }).toList();
+
+            return Padding(
+              padding:
+                  const EdgeInsets.only(
+                bottom: 30,
+              ),
+
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+
                 children: [
-                  Text(
-                    "${entry.key + 1}. ${data['question'] ?? 'Question'}",
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text("A. ${data['optionA'] ?? ''}"),
-                  Text("B. ${data['optionB'] ?? ''}"),
-                  Text("C. ${data['optionC'] ?? ''}"),
-                  Text("D. ${data['optionD'] ?? ''}"),
-                  const SizedBox(height: 10),
+                  // ==============================================
+                  // BATCH TITLE
+                  // ==============================================
+
                   Row(
                     children: [
                       const Icon(
-                        Icons.school_outlined,
-                        size: 17,
-                        color: Colors.grey,
+                        Icons.school_rounded,
+                        color:
+                            Color(0xFF3F51B5),
                       ),
-                      const SizedBox(width: 6),
+
+                      const SizedBox(width: 8),
+
                       Text(
-                        data['batchName']?.toString() ??
-                            'Batch',
-                        style: const TextStyle(
-                          color: Colors.grey,
+                        "${batch.name} - Tests",
+                        style:
+                            const TextStyle(
+                          fontSize: 20,
+                          fontWeight:
+                              FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
+
+                  const SizedBox(
+                    height: 16,
+                  ),
+
+                  if (foldersForBatch.isEmpty)
+                    Container(
+                      width:
+                          double.infinity,
+
+                      padding:
+                          const EdgeInsets.all(
+                        20,
+                      ),
+
+                      decoration:
+                          BoxDecoration(
+                        color:
+                            Colors.white,
+
+                        borderRadius:
+                            BorderRadius.circular(
+                          16,
+                        ),
+
+                        border:
+                            Border.all(
+                          color:
+                              const Color(
+                            0xFFE5E7EB,
+                          ),
+                        ),
+                      ),
+
+                      child:
+                          const Text(
+                        "No test folders have been created for this batch.",
+                        textAlign:
+                            TextAlign.center,
+                        style:
+                            TextStyle(
+                          color:
+                              Colors.grey,
+                        ),
+                      ),
+                    )
+                  else
+                    LayoutBuilder(
+                      builder: (
+                        context,
+                        constraints,
+                      ) {
+                        final columns =
+                            constraints
+                                        .maxWidth >=
+                                    700
+                                ? 2
+                                : 1;
+
+                        const spacing =
+                            16.0;
+
+                        final cardWidth =
+                            (constraints
+                                        .maxWidth -
+                                    spacing *
+                                        (columns -
+                                            1)) /
+                                columns;
+
+                        return Wrap(
+                          spacing: spacing,
+                          runSpacing:
+                              spacing,
+
+                          children:
+                              foldersForBatch
+                                  .map(
+                            (folder) {
+                              final folderName =
+                                  _folderName(
+                                folder,
+                              );
+
+                              final questionCount =
+                                  questions
+                                      .where(
+                                (
+                                  question,
+                                ) {
+                                  return _questionBelongsToFolder(
+                                    question
+                                        .data(),
+                                    folder.id,
+                                    folderName,
+                                  );
+                                },
+                              ).length;
+
+                              return SizedBox(
+                                width:
+                                    cardWidth,
+
+                                height:
+                                    220,
+
+                                child:
+                                    _TutorTestFolderCard(
+                                  testName:
+                                      folderName,
+
+                                  questionCount:
+                                      questionCount,
+
+                                  onTap: () {
+                                    _openTestFolder(
+                                      batch,
+                                      folder,
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                          ).toList(),
+                        );
+                      },
+                    ),
                 ],
               ),
-            ),
-          );
-        }),
-      ],
+            );
+          }),
+        ],
+      ),
     );
   }
+
+  // ============================================================
+  // SUBMISSIONS TAB
+  // ============================================================
 
   Widget _submissionsTab() {
     if (submissions.isEmpty) {
@@ -260,16 +655,18 @@ class _TutorAssessmentsPageState
       );
     }
 
-    final pendingCount = submissions
-        .where(
-          (doc) => doc.data()['markReleased'] != true,
-        )
-        .length;
+    final pendingCount =
+        submissions.where((doc) {
+      return doc.data()['markReleased'] !=
+          true;
+    }).length;
 
     return RefreshIndicator(
       onRefresh: _loadData,
+
       child: ListView(
         padding: const EdgeInsets.all(18),
+
         children: [
           Row(
             children: [
@@ -278,72 +675,539 @@ class _TutorAssessmentsPageState
                   "Student Submissions",
                   style: TextStyle(
                     fontSize: 22,
-                    fontWeight: FontWeight.bold,
+                    fontWeight:
+                        FontWeight.bold,
                   ),
                 ),
               ),
+
               if (pendingCount > 0)
                 Chip(
-                  avatar: const Icon(
-                    Icons.notifications_active_rounded,
+                  avatar:
+                      const Icon(
+                    Icons
+                        .notifications_active_rounded,
                     size: 18,
-                    color: Colors.orange,
+                    color:
+                        Colors.orange,
                   ),
-                  label: Text("$pendingCount pending"),
+
+                  label:
+                      Text(
+                    "$pendingCount pending",
+                  ),
                 ),
             ],
           ),
-          const SizedBox(height: 18),
-          ...submissions.map((submission) {
-            final data = submission.data();
 
-            final released =
-                data['markReleased'] == true;
+          const SizedBox(
+            height: 18,
+          ),
 
-            final score = data['score'] ?? 0;
-            final total = data['totalMarks'] ?? 0;
+          ...submissions.map(
+            (submission) {
+              final data =
+                  submission.data();
 
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: ListTile(
-                contentPadding: const EdgeInsets.all(16),
-                leading: CircleAvatar(
-                  backgroundColor: released
-                      ? const Color(0xFFE0F3F1)
-                      : const Color(0xFFFFF0D7),
-                  child: Icon(
-                    released
-                        ? Icons.verified_rounded
-                        : Icons.pending_actions_rounded,
-                    color: released
-                        ? const Color(0xFF00897B)
-                        : const Color(0xFFEF6C00),
+              final released =
+                  data['markReleased'] ==
+                      true;
+
+              final score =
+                  data['score'] ?? 0;
+
+              final total =
+                  data['totalMarks'] ??
+                      0;
+
+              final testName =
+                  data['testName']
+                              ?.toString()
+                              .trim()
+                              .isNotEmpty ==
+                          true
+                      ? data['testName']
+                          .toString()
+                          .trim()
+                      : "Assessment";
+
+              final batchName =
+                  data['batchName']
+                              ?.toString()
+                              .trim()
+                              .isNotEmpty ==
+                          true
+                      ? data['batchName']
+                          .toString()
+                          .trim()
+                      : "Batch not assigned";
+
+              return Card(
+                margin:
+                    const EdgeInsets.only(
+                  bottom: 12,
+                ),
+
+                child:
+                    ListTile(
+                  contentPadding:
+                      const EdgeInsets.all(
+                    16,
+                  ),
+
+                  leading:
+                      CircleAvatar(
+                    backgroundColor:
+                        released
+                            ? const Color(
+                                0xFFE0F3F1,
+                              )
+                            : const Color(
+                                0xFFFFF0D7,
+                              ),
+
+                    child:
+                        Icon(
+                      released
+                          ? Icons
+                              .verified_rounded
+                          : Icons
+                              .pending_actions_rounded,
+
+                      color:
+                          released
+                              ? const Color(
+                                  0xFF00897B,
+                                )
+                              : const Color(
+                                  0xFFEF6C00,
+                                ),
+                    ),
+                  ),
+
+                  title:
+                      Text(
+                    data['studentName']
+                            ?.toString() ??
+                        'Student',
+
+                    style:
+                        const TextStyle(
+                      fontWeight:
+                          FontWeight.bold,
+                    ),
+                  ),
+
+                  subtitle:
+                      Padding(
+                    padding:
+                        const EdgeInsets.only(
+                      top: 5,
+                    ),
+
+                    child:
+                        Text(
+                      "$testName\n"
+                      "$batchName • "
+                      "${released ? 'Released: $score / $total' : 'Submitted • Awaiting review'}"
+                      " • ${_formatDate(data['submittedAt'])}",
+                    ),
+                  ),
+
+                  isThreeLine:
+                      true,
+
+                  trailing:
+                      FilledButton.tonal(
+                    onPressed:
+                        () {
+                      _openReview(
+                        submission,
+                      );
+                    },
+
+                    child:
+                        Text(
+                      released
+                          ? "View"
+                          : "Review",
+                    ),
                   ),
                 ),
-                title: Text(
-                  data['studentName']?.toString() ??
-                      'Student',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+
+      child: Scaffold(
+        backgroundColor:
+            const Color(
+          0xFFF7F8FC,
+        ),
+
+        appBar:
+            AppBar(
+          title:
+              const Text(
+            "Assessments",
+          ),
+
+          backgroundColor:
+              Colors.white,
+
+          foregroundColor:
+              const Color(
+            0xFF222222,
+          ),
+
+          elevation:
+              0.5,
+
+          bottom:
+              const TabBar(
+            tabs: [
+              Tab(
+                icon:
+                    Icon(
+                  Icons
+                      .folder_copy_outlined,
+                ),
+                text:
+                    "Questions",
+              ),
+
+              Tab(
+                icon:
+                    Icon(
+                  Icons
+                      .assignment_turned_in_outlined,
+                ),
+                text:
+                    "Submissions",
+              ),
+            ],
+          ),
+        ),
+
+        body:
+            isLoading
+                ? const Center(
+                    child:
+                        CircularProgressIndicator(),
+                  )
+                : errorMessage !=
+                        null
+                    ? Center(
+                        child:
+                            Padding(
+                          padding:
+                              const EdgeInsets.all(
+                            24,
+                          ),
+
+                          child:
+                              Text(
+                            "Could not load assessments.\n\n$errorMessage",
+
+                            textAlign:
+                                TextAlign.center,
+                          ),
+                        ),
+                      )
+                    : TabBarView(
+                        children: [
+                          _questionsTab(),
+                          _submissionsTab(),
+                        ],
+                      ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// TUTOR BATCH
+// ============================================================
+
+class _TutorBatch {
+  final String id;
+  final String name;
+
+  const _TutorBatch({
+    required this.id,
+    required this.name,
+  });
+}
+
+// ============================================================
+// TEST FOLDER CARD
+// ============================================================
+
+class _TutorTestFolderCard
+    extends StatelessWidget {
+  final String testName;
+  final int questionCount;
+  final VoidCallback onTap;
+
+  const _TutorTestFolderCard({
+    required this.testName,
+    required this.questionCount,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+
+      elevation: 2,
+
+      borderRadius:
+          BorderRadius.circular(
+        24,
+      ),
+
+      child:
+          InkWell(
+        onTap:
+            onTap,
+
+        borderRadius:
+            BorderRadius.circular(
+          24,
+        ),
+
+        child:
+            Padding(
+          padding:
+              const EdgeInsets.all(
+            20,
+          ),
+
+          child:
+              Column(
+            mainAxisAlignment:
+                MainAxisAlignment
+                    .center,
+
+            children: [
+              Container(
+                width: 76,
+                height: 76,
+
+                decoration:
+                    BoxDecoration(
+                  gradient:
+                      const LinearGradient(
+                    colors: [
+                      Color(
+                        0xFF8A5AD9,
+                      ),
+                      Color(
+                        0xFF6D3DC2,
+                      ),
+                    ],
+                  ),
+
+                  borderRadius:
+                      BorderRadius.circular(
+                    22,
                   ),
                 ),
-                subtitle: Text(
-                  "${data['batchName']?.toString().isNotEmpty == true ? data['batchName'] : 'Batch not assigned'}\n"
-                  "${released ? 'Released: $score / $total' : 'Submitted • Awaiting review'}"
-                  " • ${_formatDate(data['submittedAt'])}",
-                ),
-                isThreeLine: true,
-                trailing: FilledButton.tonal(
-                  onPressed: () {
-                    _openReview(submission);
-                  },
-                  child: Text(
-                    released ? "View" : "Review",
-                  ),
+
+                child:
+                    const Icon(
+                  Icons
+                      .assignment_rounded,
+
+                  color:
+                      Colors.white,
+
+                  size:
+                      42,
                 ),
               ),
-            );
-          }),
+
+              const SizedBox(
+                height: 16,
+              ),
+
+              Text(
+                testName,
+
+                maxLines: 2,
+
+                overflow:
+                    TextOverflow
+                        .ellipsis,
+
+                textAlign:
+                    TextAlign.center,
+
+                style:
+                    const TextStyle(
+                  fontSize: 19,
+                  fontWeight:
+                      FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(
+                height: 7,
+              ),
+
+              Text(
+                "$questionCount question${questionCount == 1 ? '' : 's'}",
+
+                style:
+                    const TextStyle(
+                  color:
+                      Colors.grey,
+                ),
+              ),
+
+              const SizedBox(
+                height: 5,
+              ),
+
+              const Text(
+                "Open questions",
+
+                style:
+                    TextStyle(
+                  color:
+                      Colors.grey,
+                  fontSize:
+                      13,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// QUESTIONS INSIDE ONE TEST FOLDER
+// ============================================================
+
+class TutorFolderQuestionsPage
+    extends StatelessWidget {
+  final String batchName;
+  final String testName;
+
+  final List<
+          QueryDocumentSnapshot<
+              Map<String, dynamic>>>
+      questions;
+
+  const TutorFolderQuestionsPage({
+    super.key,
+    required this.batchName,
+    required this.testName,
+    required this.questions,
+  });
+
+  Widget _option(
+    String label,
+    String text,
+    String correctAnswer,
+  ) {
+    final correct =
+        label == correctAnswer;
+
+    return Container(
+      width:
+          double.infinity,
+
+      margin:
+          const EdgeInsets.only(
+        bottom: 7,
+      ),
+
+      padding:
+          const EdgeInsets.all(
+        11,
+      ),
+
+      decoration:
+          BoxDecoration(
+        color:
+            correct
+                ? Colors.green
+                    .withOpacity(
+                      0.08,
+                    )
+                : const Color(
+                    0xFFF8FAFC,
+                  ),
+
+        borderRadius:
+            BorderRadius.circular(
+          10,
+        ),
+
+        border:
+            Border.all(
+          color:
+              correct
+                  ? Colors.green
+                  : const Color(
+                      0xFFE5E7EB,
+                    ),
+        ),
+      ),
+
+      child:
+          Row(
+        children: [
+          Expanded(
+            child:
+                Text(
+              "$label. $text",
+
+              style:
+                  TextStyle(
+                color:
+                    correct
+                        ? Colors.green
+                        : const Color(
+                            0xFF333333,
+                          ),
+
+                fontWeight:
+                    correct
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+              ),
+            ),
+          ),
+
+          if (correct)
+            const Icon(
+              Icons
+                  .check_circle_rounded,
+
+              color:
+                  Colors.green,
+
+              size:
+                  19,
+            ),
         ],
       ),
     );
@@ -351,49 +1215,144 @@ class _TutorAssessmentsPageState
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF7F8FC),
-        appBar: AppBar(
-          title: const Text("Assessments"),
-          backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFF222222),
-          elevation: 0.5,
-          bottom: const TabBar(
-            tabs: [
-              Tab(
-                icon: Icon(Icons.quiz_outlined),
-                text: "Questions",
-              ),
-              Tab(
-                icon: Icon(Icons.assignment_turned_in_outlined),
-                text: "Submissions",
-              ),
-            ],
-          ),
-        ),
-        body: isLoading
-            ? const Center(
-                child: CircularProgressIndicator(),
-              )
-            : errorMessage != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(
-                        "Could not load assessments.\n\n$errorMessage",
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  )
-                : TabBarView(
-                    children: [
-                      _questionsTab(),
-                      _submissionsTab(),
-                    ],
-                  ),
+    return Scaffold(
+      backgroundColor:
+          const Color(
+        0xFFF7F8FC,
       ),
+
+      appBar:
+          AppBar(
+        title:
+            Text(
+          "$batchName - $testName",
+        ),
+      ),
+
+      body:
+          questions.isEmpty
+              ? const Center(
+                  child:
+                      Text(
+                    "No questions have been added to this test.",
+                    style:
+                        TextStyle(
+                      color:
+                          Colors.grey,
+                    ),
+                  ),
+                )
+              : ListView.builder(
+                  padding:
+                      const EdgeInsets.all(
+                    18,
+                  ),
+
+                  itemCount:
+                      questions.length,
+
+                  itemBuilder: (
+                    context,
+                    index,
+                  ) {
+                    final data =
+                        questions[
+                                index]
+                            .data();
+
+                    final question =
+                        data['question']
+                                ?.toString() ??
+                            'Question';
+
+                    final optionA =
+                        data['optionA']
+                                ?.toString() ??
+                            '';
+
+                    final optionB =
+                        data['optionB']
+                                ?.toString() ??
+                            '';
+
+                    final optionC =
+                        data['optionC']
+                                ?.toString() ??
+                            '';
+
+                    final optionD =
+                        data['optionD']
+                                ?.toString() ??
+                            '';
+
+                    final correctAnswer =
+                        data['correctAnswer']
+                                ?.toString() ??
+                            '';
+
+                    return Card(
+                      margin:
+                          const EdgeInsets.only(
+                        bottom: 14,
+                      ),
+
+                      child:
+                          Padding(
+                        padding:
+                            const EdgeInsets.all(
+                          18,
+                        ),
+
+                        child:
+                            Column(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
+
+                          children: [
+                            Text(
+                              "${index + 1}. $question",
+
+                              style:
+                                  const TextStyle(
+                                fontSize: 18,
+                                fontWeight:
+                                    FontWeight.bold,
+                              ),
+                            ),
+
+                            const SizedBox(
+                              height: 14,
+                            ),
+
+                            _option(
+                              "A",
+                              optionA,
+                              correctAnswer,
+                            ),
+
+                            _option(
+                              "B",
+                              optionB,
+                              correctAnswer,
+                            ),
+
+                            _option(
+                              "C",
+                              optionC,
+                              correctAnswer,
+                            ),
+
+                            _option(
+                              "D",
+                              optionD,
+                              correctAnswer,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
     );
   }
 }

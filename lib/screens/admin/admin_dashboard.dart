@@ -1,351 +1,1013 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
-import '../auth/login_screen.dart';
 import 'add_user_screen.dart';
-import 'user_list_screen.dart';
 import 'allocate_students_screen.dart';
+import 'user_list_screen.dart';
 
-class AdminDashboard extends StatelessWidget {
+class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
 
-  static const Color primaryColor = Color(0xFF1E3A8A);
-  static const Color backgroundColor = Color(0xFFF5F7FB);
+  @override
+  State<AdminDashboard> createState() =>
+      _AdminDashboardState();
+}
 
-  Future<void> logout(BuildContext context) async {
-    await FirebaseAuth.instance.signOut();
+class _AdminDashboardState
+    extends State<AdminDashboard> {
+  int studentCount = 0;
+  int tutorCount = 0;
+  int coreTutorCount = 0;
+  int allocatedStudentCount = 0;
 
-    if (context.mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const LoginScreen(),
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOverview();
+  }
+
+  // ============================================================
+  // LOAD OVERVIEW
+  // ============================================================
+
+  Future<void> _loadOverview() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .get();
+
+      int students = 0;
+      int tutors = 0;
+      int coreTutors = 0;
+      int allocated = 0;
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+
+        final role =
+            data['role']?.toString() ?? '';
+
+        final isActive =
+            data['isActive'] != false;
+
+        if (!isActive) {
+          continue;
+        }
+
+        if (role == 'student') {
+          students++;
+
+          final assignedTutorId =
+              data['assignedTutorId']
+                      ?.toString()
+                      .trim() ??
+                  '';
+
+          if (assignedTutorId.isNotEmpty) {
+            allocated++;
+          }
+        } else if (role == 'tutor') {
+          tutors++;
+        } else if (role == 'core_tutor') {
+          coreTutors++;
+        }
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        studentCount = students;
+        tutorCount = tutors;
+        coreTutorCount = coreTutors;
+        allocatedStudentCount = allocated;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Could not load dashboard details: $e",
+          ),
         ),
       );
     }
   }
 
-  void openScreen(
-    BuildContext context,
+  // ============================================================
+  // OPEN SCREEN
+  // ============================================================
+
+  Future<void> _openScreen(
     Widget screen,
-  ) {
-    Navigator.push(
+  ) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => screen,
       ),
     );
+
+    // Refresh overview when returning.
+    _loadOverview();
   }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
+    final width =
+        MediaQuery.of(context).size.width;
+
+    final horizontalPadding =
+        width < 600 ? 16.0 : 22.0;
+
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor:
+          const Color(0xFFF7F8FC),
 
-      appBar: AppBar(
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          "Admin Dashboard",
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        actions: [
-          IconButton(
-            tooltip: "Logout",
-            onPressed: () => logout(context),
-            icon: const Icon(
-              Icons.logout_rounded,
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
+      body: RefreshIndicator(
+        onRefresh: _loadOverview,
 
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            int columns = 1;
+        child: ListView(
+          padding: EdgeInsets.zero,
 
-            if (constraints.maxWidth >= 900) {
-              columns = 3;
-            } else if (constraints.maxWidth >= 600) {
-              columns = 2;
-            }
+          children: [
+            // ====================================================
+            // HEADER
+            // ====================================================
 
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+            Container(
+              width: double.infinity,
+
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                24,
+                horizontalPadding,
+                28,
+              ),
+
+              decoration:
+                  const BoxDecoration(
+                gradient:
+                    LinearGradient(
+                  colors: [
+                    Color(0xFF1F2D86),
+                    Color(0xFF6174CE),
+                  ],
+                  begin:
+                      Alignment.topLeft,
+                  end:
+                      Alignment.bottomRight,
+                ),
+              ),
+
+              child: Row(
                 children: [
+                  // ------------------------------------------------
+                  // ADMIN ICON
+                  // ------------------------------------------------
+
                   Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(26),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFF1E3A8A),
-                          Color(0xFF2563EB),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                    width: 64,
+                    height: 64,
+
+                    decoration:
+                        BoxDecoration(
+                      color: Colors.white
+                          .withOpacity(
+                        0.18,
                       ),
                       borderRadius:
-                          BorderRadius.circular(20),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x18000000),
-                          blurRadius: 15,
-                          offset: Offset(0, 5),
-                        ),
-                      ],
+                          BorderRadius.circular(
+                        18,
+                      ),
                     ),
 
-                    child: const Column(
+                    child: const Icon(
+                      Icons
+                          .admin_panel_settings_rounded,
+                      color: Colors.white,
+                      size: 36,
+                    ),
+                  ),
+
+                  const SizedBox(
+                    width: 18,
+                  ),
+
+                  // ------------------------------------------------
+                  // TITLE
+                  // ------------------------------------------------
+
+                  const Expanded(
+                    child: Column(
                       crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                          CrossAxisAlignment
+                              .start,
+
                       children: [
                         Text(
-                          "Welcome, Admin 👋",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
+                          "Welcome, Admin",
+                          style:
+                              TextStyle(
+                            color:
+                                Colors.white,
+                            fontSize: 27,
+                            fontWeight:
+                                FontWeight
+                                    .bold,
                           ),
                         ),
 
-                        SizedBox(height: 8),
+                        SizedBox(
+                          height: 5,
+                        ),
 
                         Text(
-                          "Manage users and student allocations from your dashboard.",
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 15,
+                          "Manage users and student allocations",
+                          style:
+                              TextStyle(
+                            color:
+                                Colors.white70,
+                            fontSize: 14,
                           ),
                         ),
                       ],
                     ),
                   ),
 
-                  const SizedBox(height: 30),
+                  // NO LOGOUT HERE.
+                  // Logout is handled globally by role_router.dart
+                ],
+              ),
+            ),
+
+            // ====================================================
+            // MAIN BODY
+            // ====================================================
+
+            Padding(
+              padding:
+                  EdgeInsets.fromLTRB(
+                horizontalPadding,
+                24,
+                horizontalPadding,
+                35,
+              ),
+
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment
+                        .start,
+
+                children: [
+                  // =================================================
+                  // OVERVIEW
+                  // =================================================
 
                   const Text(
-                    "Management",
+                    "Overview",
                     style: TextStyle(
-                      fontSize: 21,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1F2937),
+                      fontSize: 23,
+                      fontWeight:
+                          FontWeight.bold,
+                      color:
+                          Color(0xFF222222),
                     ),
                   ),
 
-                  const SizedBox(height: 5),
+                  const SizedBox(
+                    height: 16,
+                  ),
+
+                  if (isLoading)
+                    const Center(
+                      child: Padding(
+                        padding:
+                            EdgeInsets.all(
+                          30,
+                        ),
+                        child:
+                            CircularProgressIndicator(),
+                      ),
+                    )
+                  else
+                    LayoutBuilder(
+                      builder:
+                          (
+                        context,
+                        constraints,
+                      ) {
+                        int columns;
+
+                        if (constraints
+                                .maxWidth <
+                            600) {
+                          columns = 1;
+                        } else if (constraints
+                                .maxWidth <
+                            950) {
+                          columns = 2;
+                        } else {
+                          columns = 4;
+                        }
+
+                        const spacing =
+                            12.0;
+
+                        final cardWidth =
+                            (constraints
+                                        .maxWidth -
+                                    spacing *
+                                        (columns -
+                                            1)) /
+                                columns;
+
+                        final cards = [
+                          AdminOverviewCard(
+                            title:
+                                "Students",
+                            value:
+                                "$studentCount",
+                            subtitle:
+                                "Active students",
+                            icon:
+                                Icons
+                                    .school_rounded,
+                            color:
+                                const Color(
+                              0xFF3F51B5,
+                            ),
+                          ),
+
+                          AdminOverviewCard(
+                            title:
+                                "Tutors",
+                            value:
+                                "$tutorCount",
+                            subtitle:
+                                "Active tutors",
+                            icon:
+                                Icons
+                                    .people_alt_rounded,
+                            color:
+                                const Color(
+                              0xFF009688,
+                            ),
+                          ),
+
+                          AdminOverviewCard(
+                            title:
+                                "Core Tutors",
+                            value:
+                                "$coreTutorCount",
+                            subtitle:
+                                "Core tutor accounts",
+                            icon:
+                                Icons
+                                    .supervisor_account_rounded,
+                            color:
+                                const Color(
+                              0xFFFF9800,
+                            ),
+                          ),
+
+                          AdminOverviewCard(
+                            title:
+                                "Allocated",
+                            value:
+                                "$allocatedStudentCount",
+                            subtitle:
+                                "Students with tutors",
+                            icon:
+                                Icons
+                                    .assignment_ind_rounded,
+                            color:
+                                const Color(
+                              0xFFE84B59,
+                            ),
+                          ),
+                        ];
+
+                        return Wrap(
+                          spacing:
+                              spacing,
+                          runSpacing:
+                              spacing,
+
+                          children:
+                              cards
+                                  .map(
+                                    (
+                                      card,
+                                    ) =>
+                                        SizedBox(
+                                      width:
+                                          cardWidth,
+                                      height:
+                                          180,
+                                      child:
+                                          card,
+                                    ),
+                                  )
+                                  .toList(),
+                        );
+                      },
+                    ),
+
+                  const SizedBox(
+                    height: 32,
+                  ),
+
+                  // =================================================
+                  // QUICK ACCESS
+                  // =================================================
 
                   const Text(
-                    "Choose an option to continue",
+                    "Quick access",
                     style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
+                      fontSize: 23,
+                      fontWeight:
+                          FontWeight.bold,
+                      color:
+                          Color(0xFF222222),
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(
+                    height: 18,
+                  ),
 
-                  GridView.count(
-                    crossAxisCount: columns,
-                    shrinkWrap: true,
-                    physics:
-                        const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 18,
-                    mainAxisSpacing: 18,
-                    childAspectRatio:
-                        columns == 1 ? 2.8 : 1.7,
+                  LayoutBuilder(
+                    builder:
+                        (
+                      context,
+                      constraints,
+                    ) {
+                      final columns =
+                          constraints
+                                      .maxWidth <
+                                  650
+                              ? 1
+                              : 2;
 
-                    children: [
-                      AdminCard(
-                        icon:
-                            Icons.person_add_alt_1_rounded,
-                        title: "Add User",
-                        subtitle:
-                            "Create a new user account",
-                        color:
-                            const Color(0xFF2563EB),
-                        onTap: () {
-                          openScreen(
-                            context,
-                            const AddUserScreen(),
-                          );
-                        },
-                      ),
+                      const spacing =
+                          14.0;
 
-                      AdminCard(
-                        icon: Icons.shuffle_rounded,
-                        title: "Allocate Students",
-                        subtitle:
-                            "Assign students to tutors",
-                        color:
-                            const Color(0xFF7C3AED),
-                        onTap: () {
-                          openScreen(
-                            context,
-                            const AllocateStudentsScreen(),
-                          );
-                        },
-                      ),
+                      final cardWidth =
+                          (constraints
+                                      .maxWidth -
+                                  spacing *
+                                      (columns -
+                                          1)) /
+                              columns;
 
-                      AdminCard(
-                        icon: Icons.school_rounded,
-                        title: "Students",
-                        subtitle:
-                            "View and manage students",
-                        color:
-                            const Color(0xFF0891B2),
-                        onTap: () {
-                          openScreen(
-                            context,
-                            const UserListScreen(
-                              role: "student",
+                      final actions = [
+                        // =========================================
+                        // ADD USER
+                        // =========================================
+
+                        AdminQuickAction(
+                          title:
+                              "Add User",
+                          subtitle:
+                              "Create a new account",
+                          icon:
+                              Icons
+                                  .person_add_alt_1_rounded,
+
+                          colors: const [
+                            Color(
+                              0xFF4859B9,
                             ),
-                          );
-                        },
-                      ),
-
-                      AdminCard(
-                        icon: Icons.person_rounded,
-                        title: "Tutors",
-                        subtitle:
-                            "View and manage tutors",
-                        color:
-                            const Color(0xFF059669),
-                        onTap: () {
-                          openScreen(
-                            context,
-                            const UserListScreen(
-                              role: "tutor",
+                            Color(
+                              0xFF7A89D7,
                             ),
-                          );
-                        },
-                      ),
+                          ],
 
-                      AdminCard(
-                        icon:
-                            Icons.supervisor_account_rounded,
-                        title: "Core Tutors",
-                        subtitle:
-                            "View core tutor accounts",
-                        color:
-                            const Color(0xFFD97706),
-                        onTap: () {
-                          openScreen(
-                            context,
-                            const UserListScreen(
-                              role: "core_tutor",
+                          onTap: () {
+                            _openScreen(
+                              const AddUserScreen(),
+                            );
+                          },
+                        ),
+
+                        // =========================================
+                        // ALLOCATE STUDENTS
+                        // =========================================
+
+                        AdminQuickAction(
+                          title:
+                              "Allocate Students",
+                          subtitle:
+                              "Assign students to tutors",
+                          icon:
+                              Icons
+                                  .shuffle_rounded,
+
+                          colors: const [
+                            Color(
+                              0xFF7C3AED,
                             ),
-                          );
-                        },
-                      ),
-                    ],
+                            Color(
+                              0xFF9F67E8,
+                            ),
+                          ],
+
+                          onTap: () {
+                            _openScreen(
+                              const AllocateStudentsScreen(),
+                            );
+                          },
+                        ),
+
+                        // =========================================
+                        // STUDENTS
+                        // =========================================
+
+                        AdminQuickAction(
+                          title:
+                              "Students",
+                          subtitle:
+                              "View and manage students",
+                          icon:
+                              Icons
+                                  .school_rounded,
+
+                          colors: const [
+                            Color(
+                              0xFF159BD7,
+                            ),
+                            Color(
+                              0xFF51C0EE,
+                            ),
+                          ],
+
+                          onTap: () {
+                            _openScreen(
+                              const UserListScreen(
+                                role:
+                                    "student",
+                              ),
+                            );
+                          },
+                        ),
+
+                        // =========================================
+                        // TUTORS
+                        // =========================================
+
+                        AdminQuickAction(
+                          title:
+                              "Tutors",
+                          subtitle:
+                              "View and manage tutors",
+                          icon:
+                              Icons
+                                  .people_alt_rounded,
+
+                          colors: const [
+                            Color(
+                              0xFF009688,
+                            ),
+                            Color(
+                              0xFF45B5A8,
+                            ),
+                          ],
+
+                          onTap: () {
+                            _openScreen(
+                              const UserListScreen(
+                                role:
+                                    "tutor",
+                              ),
+                            );
+                          },
+                        ),
+
+                        // =========================================
+                        // CORE TUTORS
+                        // =========================================
+
+                        AdminQuickAction(
+                          title:
+                              "Core Tutors",
+                          subtitle:
+                              "Manage core tutor accounts",
+                          icon:
+                              Icons
+                                  .supervisor_account_rounded,
+
+                          colors: const [
+                            Color(
+                              0xFFFF7A00,
+                            ),
+                            Color(
+                              0xFFFFB13B,
+                            ),
+                          ],
+
+                          onTap: () {
+                            _openScreen(
+                              const UserListScreen(
+                                role:
+                                    "core_tutor",
+                              ),
+                            );
+                          },
+                        ),
+                      ];
+
+                      return Wrap(
+                        spacing:
+                            spacing,
+                        runSpacing:
+                            spacing,
+
+                        children:
+                            actions
+                                .map(
+                                  (
+                                    action,
+                                  ) =>
+                                      SizedBox(
+                                    width:
+                                        cardWidth,
+                                    height:
+                                        160,
+                                    child:
+                                        action,
+                                  ),
+                                )
+                                .toList(),
+                      );
+                    },
                   ),
                 ],
               ),
-            );
-          },
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class AdminCard extends StatelessWidget {
+// ============================================================
+// OVERVIEW CARD
+// ============================================================
+
+class AdminOverviewCard
+    extends StatelessWidget {
+  final String title;
+  final String value;
+  final String subtitle;
   final IconData icon;
+  final Color color;
+
+  const AdminOverviewCard({
+    super.key,
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding:
+          const EdgeInsets.all(
+        16,
+      ),
+
+      decoration:
+          BoxDecoration(
+        color:
+            Colors.white,
+
+        borderRadius:
+            BorderRadius.circular(
+          19,
+        ),
+
+        border:
+            Border.all(
+          color:
+              const Color(
+            0xFFEEF0F5,
+          ),
+        ),
+
+        boxShadow:
+            const [
+          BoxShadow(
+            color:
+                Color(
+              0x0F000000,
+            ),
+            blurRadius:
+                16,
+            offset:
+                Offset(
+              0,
+              5,
+            ),
+          ),
+        ],
+      ),
+
+      child:
+          Column(
+        mainAxisAlignment:
+            MainAxisAlignment.center,
+
+        children: [
+          Container(
+            width:
+                48,
+            height:
+                48,
+
+            decoration:
+                BoxDecoration(
+              color:
+                  color.withOpacity(
+                0.12,
+              ),
+
+              borderRadius:
+                  BorderRadius
+                      .circular(
+                14,
+              ),
+            ),
+
+            child:
+                Icon(
+              icon,
+              color:
+                  color,
+              size:
+                  25,
+            ),
+          ),
+
+          const SizedBox(
+            height:
+                9,
+          ),
+
+          Text(
+            value,
+
+            style:
+                const TextStyle(
+              fontSize:
+                  25,
+              fontWeight:
+                  FontWeight
+                      .bold,
+              color:
+                  Color(
+                0xFF252525,
+              ),
+            ),
+          ),
+
+          const SizedBox(
+            height:
+                4,
+          ),
+
+          Text(
+            title,
+
+            textAlign:
+                TextAlign.center,
+
+            style:
+                const TextStyle(
+              fontSize:
+                  14,
+              fontWeight:
+                  FontWeight
+                      .w600,
+              color:
+                  Color(
+                0xFF666666,
+              ),
+            ),
+          ),
+
+          const SizedBox(
+            height:
+                3,
+          ),
+
+          Text(
+            subtitle,
+
+            textAlign:
+                TextAlign.center,
+
+            style:
+                const TextStyle(
+              fontSize:
+                  11,
+              color:
+                  Color(
+                0xFF999999,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// QUICK ACCESS CARD
+// ============================================================
+
+class AdminQuickAction
+    extends StatelessWidget {
   final String title;
   final String subtitle;
-  final Color color;
+  final IconData icon;
+  final List<Color> colors;
   final VoidCallback onTap;
 
-  const AdminCard({
+  const AdminQuickAction({
     super.key,
-    required this.icon,
     required this.title,
     required this.subtitle,
-    required this.color,
+    required this.icon,
+    required this.colors,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
-      elevation: 2,
-      shadowColor: Colors.black12,
-      borderRadius: BorderRadius.circular(18),
+      color:
+          Colors.transparent,
 
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+      child:
+          InkWell(
+        onTap:
+            onTap,
 
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Container(
-                width: 55,
-                height: 55,
-                decoration: BoxDecoration(
-                  color: color.withValues(
-                    alpha: 0.10,
-                  ),
-                  borderRadius:
-                      BorderRadius.circular(15),
+        borderRadius:
+            BorderRadius.circular(
+          24,
+        ),
+
+        child:
+            Ink(
+          decoration:
+              BoxDecoration(
+            gradient:
+                LinearGradient(
+              colors:
+                  colors,
+              begin:
+                  Alignment.centerLeft,
+              end:
+                  Alignment.centerRight,
+            ),
+
+            borderRadius:
+                BorderRadius
+                    .circular(
+              24,
+            ),
+
+            boxShadow:
+                [
+              BoxShadow(
+                color:
+                    colors.first
+                        .withOpacity(
+                  0.20,
                 ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 29,
+
+                blurRadius:
+                    16,
+
+                offset:
+                    const Offset(
+                  0,
+                  7,
                 ),
               ),
+            ],
+          ),
 
-              const SizedBox(width: 16),
+          child:
+              Padding(
+            padding:
+                const EdgeInsets
+                    .all(
+              18,
+            ),
 
-              Expanded(
-                child: Column(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
+            child:
+                Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment
+                      .start,
+
+              mainAxisAlignment:
+                  MainAxisAlignment
+                      .spaceBetween,
+
+              children: [
+                Container(
+                  width:
+                      56,
+                  height:
+                      56,
+
+                  decoration:
+                      BoxDecoration(
+                    color:
+                        Colors.white
+                            .withOpacity(
+                      0.18,
+                    ),
+
+                    shape:
+                        BoxShape
+                            .circle,
+                  ),
+
+                  child:
+                      Icon(
+                    icon,
+                    size:
+                        30,
+                    color:
+                        Colors.white,
+                  ),
+                ),
+
+                Column(
                   crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                      CrossAxisAlignment
+                          .start,
+
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1F2937),
+
+                      style:
+                          const TextStyle(
+                        color:
+                            Colors.white,
+                        fontSize:
+                            20,
+                        fontWeight:
+                            FontWeight
+                                .bold,
                       ),
                     ),
 
-                    const SizedBox(height: 5),
+                    const SizedBox(
+                      height:
+                          3,
+                    ),
 
                     Text(
                       subtitle,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey,
+
+                      style:
+                          TextStyle(
+                        color:
+                            Colors.white
+                                .withOpacity(
+                          0.88,
+                        ),
+                        fontSize:
+                            14,
                       ),
                     ),
                   ],
                 ),
-              ),
-
-              const SizedBox(width: 8),
-
-              const Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 17,
-                color: Colors.grey,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
