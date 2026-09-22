@@ -3207,440 +3207,404 @@ class _BatchReportsPageState extends State<BatchReportsPage> {
 }
 
 // ============================================================
-// TUTOR-STUDENT MAPPING  (read-only, assigned by the admin)
+// TUTOR-STUDENT MAPPING
+// READ ONLY - SAME DATA AS ADMIN ALLOCATION
 // ============================================================
-//
-// The admin creates the mappings. This page only READS them, live.
-//
-// If your admin app stores mappings under a different collection name,
-// change kMappingCollection below. Each mapping document is expected to
-// have (alternative field names are also accepted):
-//   tutorName   [tutor, tutor_name]
-//   studentName [student, student_name]
-//   batchName   [batch, batch_name]     (or batchId, matched against `batches`)
 
-const String kMappingCollection = 'mappings';
-
-String pickText(Map<String, dynamic> data, List<String> keys) {
-  for (final key in keys) {
-    final value = data[key]?.toString().trim() ?? '';
-
-    if (value.isNotEmpty) return value;
-  }
-
-  return '';
-}
-
-class MappingEntry {
-  final String tutor;
-  final String student;
-  final String batch;
-
-  const MappingEntry({
-    required this.tutor,
-    required this.student,
-    required this.batch,
-  });
-
-  factory MappingEntry.fromData(
-    Map<String, dynamic> data,
-    Map<String, String> batchNames,
-  ) {
-    final tutor = pickText(data, ['tutorName', 'tutor', 'tutor_name']);
-    final student =
-        pickText(data, ['studentName', 'student', 'student_name']);
-
-    var batch = pickText(data, ['batchName', 'batch', 'batch_name']);
-
-    if (batch.isEmpty) {
-      final batchId = pickText(data, ['batchId']);
-      batch = batchNames[batchId] ?? '';
-    }
-
-    return MappingEntry(
-      tutor: tutor.isEmpty ? 'Unknown tutor' : tutor,
-      student: student.isEmpty ? 'Unknown student' : student,
-      batch: batch.isEmpty ? 'Unassigned' : batch,
-    );
-  }
-}
-
-List<MappingEntry> parseMappings(
-  QuerySnapshot<Map<String, dynamic>> snapshot,
-  Map<String, String> batchNames,
-) {
-  return snapshot.docs
-      .map((doc) => MappingEntry.fromData(doc.data(), batchNames))
-      .toList();
-}
-
-Future<Map<String, String>> loadBatchNames() async {
-  try {
-    final snapshot =
-        await FirebaseFirestore.instance.collection('batches').get();
-
-    return {
-      for (final doc in snapshot.docs)
-        doc.id: doc.data()['name']?.toString() ?? '',
-    };
-  } catch (_) {
-    return {};
-  }
-}
-
-class MappingPage extends StatefulWidget {
+class MappingPage extends StatelessWidget {
   const MappingPage({super.key});
-
-  @override
-  State<MappingPage> createState() => _MappingPageState();
-}
-
-class _MappingPageState extends State<MappingPage> {
-  late final Stream<QuerySnapshot<Map<String, dynamic>>> _stream =
-      FirebaseFirestore.instance.collection(kMappingCollection).snapshots();
-
-  Map<String, String> batchNames = {};
-
-  @override
-  void initState() {
-    super.initState();
-
-    loadBatchNames().then((value) {
-      if (!mounted) return;
-
-      setState(() {
-        batchNames = value;
-      });
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kBg,
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: _stream,
+
+      body: StreamBuilder<
+          QuerySnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .snapshots(),
+
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return EmptyState(
-              icon: Icons.error_outline_rounded,
-              message: "Could not load mappings.",
-              hint: '${snapshot.error}',
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  "Could not load allocation results.\n\n"
+                  "${snapshot.error}",
+                  textAlign: TextAlign.center,
+                ),
+              ),
             );
           }
 
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final entries = parseMappings(snapshot.data!, batchNames);
-
-          if (entries.isEmpty) {
-            return const EmptyState(
-              icon: Icons.people_alt_rounded,
-              message: "No mappings yet.",
-              hint: "Tutor-student mappings assigned by the admin "
-                  "will appear here.",
+            return const Center(
+              child: CircularProgressIndicator(),
             );
           }
 
-          final grouped = <String, List<MappingEntry>>{};
+          final docs = snapshot.data!.docs;
 
-          for (final entry in entries) {
-            grouped.putIfAbsent(entry.batch, () => []).add(entry);
+          // ----------------------------------------------------
+          // TUTORS
+          // key   = tutor document ID / Firebase UID
+          // value = tutor name
+          // ----------------------------------------------------
+
+          final Map<String, String> tutorNames = {};
+
+          for (final doc in docs) {
+            final data = doc.data();
+
+            if (data['role']?.toString() != 'tutor') {
+              continue;
+            }
+
+            final name =
+                data['name']
+                        ?.toString()
+                        .trim() ??
+                    '';
+
+            tutorNames[doc.id] =
+                name.isEmpty
+                    ? 'Tutor'
+                    : name;
           }
 
-          final batches = grouped.keys.toList()..sort();
+          // ----------------------------------------------------
+          // ACTIVE STUDENTS
+          // ----------------------------------------------------
 
-          return Column(
-            children: [
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.indigo.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.lock_outline_rounded,
-                      size: 18,
-                      color: Colors.indigo,
+          final students = docs.where((doc) {
+            final data = doc.data();
+
+            return data['role']?.toString() ==
+                    'student' &&
+                data['isActive'] != false;
+          }).toList();
+
+          // Optional: alphabetical display
+          students.sort((a, b) {
+            final aName =
+                a.data()['name']
+                        ?.toString()
+                        .toLowerCase() ??
+                    '';
+
+            final bName =
+                b.data()['name']
+                        ?.toString()
+                        .toLowerCase() ??
+                    '';
+
+            return aName.compareTo(bName);
+          });
+
+          if (students.isEmpty) {
+            return const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircleAvatar(
+                    radius: 55,
+                    backgroundColor:
+                        Color(0xFFE8EAF6),
+                    child: Icon(
+                      Icons.people_alt_rounded,
+                      size: 55,
+                      color: Color(0xFF7986CB),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Assigned by the admin. View only.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.indigo.shade700,
-                          fontWeight: FontWeight.w600,
-                        ),
+                  ),
+
+                  SizedBox(height: 20),
+
+                  Text(
+                    "No allocation results yet.",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight:
+                          FontWeight.w600,
+                      color: Colors.black54,
+                    ),
+                  ),
+
+                  SizedBox(height: 6),
+
+                  Text(
+                    "Student-tutor allocations made by "
+                    "the admin will appear here.",
+                    style: TextStyle(
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(
+              22,
+              24,
+              22,
+              24,
+            ),
+
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+
+              children: [
+                // ------------------------------------------------
+                // TITLE
+                // ------------------------------------------------
+
+                Row(
+                  children: [
+                    const Text(
+                      "Allocation Results",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight:
+                            FontWeight.bold,
+                        color:
+                            Color(0xFF1F2937),
+                      ),
+                    ),
+
+                    const Spacer(),
+
+                    Text(
+                      "${students.length} "
+                      "${students.length == 1 ? 'result' : 'results'}",
+                      style: TextStyle(
+                        color:
+                            Colors.grey.shade600,
+                        fontSize: 13,
                       ),
                     ),
                   ],
                 ),
-              ),
-              Expanded(
-                child: buildFolderGrid(
-                  cards: batches.map((batch) {
-                    final count = grouped[batch]!.length;
 
-                    return FolderCard(
-                      icon: Icons.folder_rounded,
-                      label: batch,
-                      subtitle: '$count pair${count == 1 ? '' : 's'}',
-                      color: Colors.indigo,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => BatchMappingPage(
-                              batchName: batch,
-                              batchNames: batchNames,
+                const SizedBox(height: 16),
+
+                // ------------------------------------------------
+                // RESULTS
+                // ------------------------------------------------
+
+                Expanded(
+                  child: ListView.builder(
+                    itemCount:
+                        students.length,
+
+                    itemBuilder:
+                        (context, index) {
+                      final studentDoc =
+                          students[index];
+
+                      final data =
+                          studentDoc.data();
+
+                      final studentName =
+                          data['name']
+                                      ?.toString()
+                                      .trim()
+                                      .isNotEmpty ==
+                                  true
+                              ? data['name']
+                                  .toString()
+                                  .trim()
+                              : 'Student';
+
+                      final tutorId =
+                          data['assignedTutorId']
+                                  ?.toString()
+                                  .trim() ??
+                              '';
+
+                      final bool assigned =
+                          tutorId.isNotEmpty &&
+                              tutorNames
+                                  .containsKey(
+                                tutorId,
+                              );
+
+                      final tutorName =
+                          assigned
+                              ? tutorNames[
+                                  tutorId]!
+                              : 'No Tutor';
+
+                      final status =
+                          assigned
+                              ? 'Assigned'
+                              : 'Not Applicable';
+
+                      final statusColor =
+                          assigned
+                              ? Colors.green
+                              : Colors.orange;
+
+                      final icon =
+                          assigned
+                              ? Icons
+                                  .check_rounded
+                              : Icons
+                                  .warning_amber_rounded;
+
+                      return Container(
+                        width:
+                            double.infinity,
+
+                        margin:
+                            const EdgeInsets
+                                .only(
+                          bottom: 12,
+                        ),
+
+                        padding:
+                            const EdgeInsets
+                                .all(
+                          16,
+                        ),
+
+                        decoration:
+                            BoxDecoration(
+                          color:
+                              Colors.white,
+
+                          borderRadius:
+                              BorderRadius
+                                  .circular(
+                            16,
+                          ),
+
+                          border:
+                              Border.all(
+                            color:
+                                const Color(
+                              0xFFE5E7EB,
                             ),
                           ),
-                        );
-                      },
-                    );
-                  }).toList(),
+
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors
+                                  .black
+                                  .withOpacity(
+                                    0.03,
+                                  ),
+                              blurRadius: 8,
+                              offset:
+                                  const Offset(
+                                0,
+                                3,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        child: Row(
+                          children: [
+                            // ----------------------------
+                            // STATUS ICON
+                            // ----------------------------
+
+                            Container(
+                              width: 50,
+                              height: 50,
+
+                              decoration:
+                                  BoxDecoration(
+                                color: statusColor
+                                    .withOpacity(
+                                      0.10,
+                                    ),
+
+                                borderRadius:
+                                    BorderRadius
+                                        .circular(
+                                  14,
+                                ),
+                              ),
+
+                              child: Icon(
+                                icon,
+                                color:
+                                    statusColor,
+                              ),
+                            ),
+
+                            const SizedBox(
+                              width: 16,
+                            ),
+
+                            // ----------------------------
+                            // STUDENT -> TUTOR
+                            // ----------------------------
+
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment
+                                        .start,
+
+                                children: [
+                                  Text(
+                                    "$studentName  →  $tutorName",
+
+                                    style:
+                                        const TextStyle(
+                                      fontSize:
+                                          16,
+
+                                      fontWeight:
+                                          FontWeight
+                                              .w700,
+
+                                      color:
+                                          Color(
+                                        0xFF1F2937,
+                                      ),
+                                    ),
+                                  ),
+
+                                  const SizedBox(
+                                    height: 5,
+                                  ),
+
+                                  Text(
+                                    "Status: $status",
+
+                                    style:
+                                        TextStyle(
+                                      fontSize:
+                                          13,
+
+                                      fontWeight:
+                                          FontWeight
+                                              .w500,
+
+                                      color:
+                                          statusColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
-      ),
-    );
-  }
-}
-
-class BatchMappingPage extends StatefulWidget {
-  final String batchName;
-  final Map<String, String> batchNames;
-
-  const BatchMappingPage({
-    super.key,
-    required this.batchName,
-    required this.batchNames,
-  });
-
-  @override
-  State<BatchMappingPage> createState() => _BatchMappingPageState();
-}
-
-class _BatchMappingPageState extends State<BatchMappingPage> {
-  late final Stream<QuerySnapshot<Map<String, dynamic>>> _stream =
-      FirebaseFirestore.instance.collection(kMappingCollection).snapshots();
-
-  final TextEditingController searchController = TextEditingController();
-  String query = '';
-
-  @override
-  void dispose() {
-    searchController.dispose();
-    super.dispose();
-  }
-
-  Widget _buildTutorCard(String tutor, List<String> students) {
-    final sortedStudents = students.toSet().toList()..sort();
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.indigo.withOpacity(0.10),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: Colors.indigo.withOpacity(0.12),
-                child: Text(
-                  tutor[0].toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.indigo,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      tutor,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      'Tutor',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.indigo.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${sortedStudents.length} student'
-                  '${sortedStudents.length == 1 ? '' : 's'}',
-                  style: const TextStyle(
-                    color: Colors.indigo,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: sortedStudents.map((student) {
-              return Chip(
-                backgroundColor: kBg,
-                side: BorderSide.none,
-                avatar: CircleAvatar(
-                  backgroundColor: Colors.indigo.withOpacity(0.15),
-                  child: Text(
-                    student[0].toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.indigo,
-                    ),
-                  ),
-                ),
-                label: Text(student),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: kBg,
-      appBar: gradientAppBar("${widget.batchName} - Mapping"),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-            child: TextField(
-              controller: searchController,
-              onChanged: (value) {
-                setState(() {
-                  query = value.trim().toLowerCase();
-                });
-              },
-              decoration: InputDecoration(
-                hintText: 'Search tutor or student',
-                prefixIcon: const Icon(Icons.search_rounded),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: _stream,
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return EmptyState(
-                    icon: Icons.error_outline_rounded,
-                    message: "Could not load mappings.",
-                    hint: '${snapshot.error}',
-                  );
-                }
-
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                final entries = parseMappings(
-                  snapshot.data!,
-                  widget.batchNames,
-                ).where((entry) {
-                  if (entry.batch != widget.batchName) return false;
-
-                  if (query.isEmpty) return true;
-
-                  return entry.tutor.toLowerCase().contains(query) ||
-                      entry.student.toLowerCase().contains(query);
-                }).toList();
-
-                if (entries.isEmpty) {
-                  return const EmptyState(
-                    icon: Icons.people_alt_rounded,
-                    message: "No mappings found.",
-                    hint: "Mappings assigned by the admin will appear here.",
-                  );
-                }
-
-                final byTutor = <String, List<String>>{};
-
-                for (final entry in entries) {
-                  byTutor
-                      .putIfAbsent(entry.tutor, () => [])
-                      .add(entry.student);
-                }
-
-                final tutors = byTutor.keys.toList()..sort();
-
-                return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                  itemCount: tutors.length,
-                  itemBuilder: (context, index) {
-                    final tutor = tutors[index];
-
-                    return _buildTutorCard(tutor, byTutor[tutor]!);
-                  },
-                );
-              },
-            ),
-          ),
-        ],
       ),
     );
   }
