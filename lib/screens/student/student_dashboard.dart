@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'student_courses_page.dart';
 
 // ============================================================
 // STUDENT DASHBOARD
@@ -155,7 +156,7 @@ class _StudentDashboardState
 
   void _openTab(int pageIndex) {
     if (pageIndex < 1 ||
-        pageIndex > 4) {
+        pageIndex > 5) {
       return;
     }
 
@@ -225,17 +226,12 @@ class _StudentDashboardState
         onNavigate: _openTab,
       ),
 
-      bottomNavigationBar:
-          BottomNavigationBar(
+      bottomNavigationBar: BottomNavigationBar(
         currentIndex: 0,
-        type:
-            BottomNavigationBarType.fixed,
-        backgroundColor:
-            Colors.white,
-        selectedItemColor:
-            const Color(0xFF3F51B5),
-        unselectedItemColor:
-            Colors.grey,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: const Color(0xFF3F51B5),
+        unselectedItemColor: Colors.grey,
         selectedFontSize: 11,
         unselectedFontSize: 11,
         elevation: 12,
@@ -255,29 +251,40 @@ class _StudentDashboardState
             ),
             label: "Home",
           ),
+
           BottomNavigationBarItem(
             icon: Icon(
               Icons.folder_rounded,
             ),
             label: "Materials",
           ),
+
           BottomNavigationBarItem(
             icon: Icon(
               Icons.quiz_rounded,
             ),
             label: "Tests",
           ),
+
           BottomNavigationBarItem(
             icon: Icon(
               Icons.bar_chart_rounded,
             ),
             label: "Marks",
           ),
+
           BottomNavigationBarItem(
             icon: Icon(
               Icons.feedback_rounded,
             ),
             label: "Feedback",
+          ),
+
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.menu_book_rounded,
+            ),
+            label: "Courses",
           ),
         ],
       ),
@@ -309,12 +316,13 @@ class _StudentTabPageState
   late int index;
 
   static const pageTitles = [
-    "",
-    "Learning Materials",
-    "Tests",
-    "My Marks",
-    "Feedback",
-  ];
+  "",
+  "Learning Materials",
+  "Tests",
+  "My Marks",
+  "Feedback",
+  "Courses",
+];
 
   @override
   void initState() {
@@ -333,7 +341,7 @@ class _StudentTabPageState
     }
 
     if (pageIndex < 1 ||
-        pageIndex > 4) {
+        pageIndex > 5) {
       return;
     }
 
@@ -361,6 +369,13 @@ class _StudentTabPageState
 
       StudentFeedbackPage(
         profile: widget.profile,
+      ),
+
+      StudentCoursesPage(
+        batchId:
+            widget.profile.batchId,
+        batchName:
+            widget.profile.batchName,
       ),
     ];
 
@@ -435,6 +450,13 @@ class _StudentTabPageState
             ),
             label: "Feedback",
           ),
+
+        BottomNavigationBarItem(
+          icon: Icon(
+            Icons.menu_book_rounded,
+          ),
+          label: "Courses",
+        ),
         ],
       ),
     );
@@ -1912,6 +1934,17 @@ class _StudentHomePageState
                                     .onNavigate(
                               4,
                             ),
+                          ),
+
+                          _QuickAccessCard(
+                            icon: Icons.menu_book_rounded,
+                            title: "Courses",
+                            subtitle: "Courses & syllabus",
+                            colors: const [
+                              Color(0xFF7B1FA2),
+                              Color(0xFFAB47BC),
+                            ],
+                            onTap: () => widget.onNavigate(5),
                           ),
                         ];
 

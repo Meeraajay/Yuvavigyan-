@@ -21,6 +21,7 @@ class QuickActionSection extends StatelessWidget {
         ],
         onTap: () => onNavigate(1),
       ),
+
       _QuickActionData(
         title: "Learning Materials",
         subtitle: "Videos & notes",
@@ -31,6 +32,7 @@ class QuickActionSection extends StatelessWidget {
         ],
         onTap: () => onNavigate(2),
       ),
+
       _QuickActionData(
         title: "Assessments",
         subtitle: "Review & release marks",
@@ -41,6 +43,7 @@ class QuickActionSection extends StatelessWidget {
         ],
         onTap: () => onNavigate(3),
       ),
+
       _QuickActionData(
         title: "Feedback",
         subtitle: "Student feedback",
@@ -51,10 +54,22 @@ class QuickActionSection extends StatelessWidget {
         ],
         onTap: () => onNavigate(4),
       ),
+
+      _QuickActionData(
+        title: "Courses",
+        subtitle: "Courses & syllabus",
+        icon: Icons.menu_book_rounded,
+        colors: const [
+          Color(0xFF7B1FA2),
+          Color(0xFFAB47BC),
+        ],
+        onTap: () => onNavigate(5),
+      ),
     ];
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
       children: [
         const Text(
           "Quick access",
@@ -68,31 +83,41 @@ class QuickActionSection extends StatelessWidget {
         const SizedBox(height: 18),
 
         LayoutBuilder(
-          builder: (context, constraints) {
+          builder: (
+            context,
+            constraints,
+          ) {
             final columns =
-                constraints.maxWidth < 650 ? 1 : 2;
+                constraints.maxWidth < 650
+                    ? 1
+                    : 2;
 
             const spacing = 14.0;
 
             final cardWidth =
                 (constraints.maxWidth -
-                        spacing * (columns - 1)) /
+                        spacing *
+                            (columns - 1)) /
                     columns;
 
             return Wrap(
               spacing: spacing,
               runSpacing: spacing,
-              children: actions
-                  .map(
-                    (action) => SizedBox(
-                      width: cardWidth,
-                      height: 160,
-                      child: _QuickActionCard(
-                        data: action,
-                      ),
+
+              children:
+                  actions.map(
+                (action) {
+                  return SizedBox(
+                    width: cardWidth,
+                    height: 160,
+
+                    child:
+                        _QuickActionCard(
+                      data: action,
                     ),
-                  )
-                  .toList(),
+                  );
+                },
+              ).toList(),
             );
           },
         ),
@@ -117,7 +142,8 @@ class _QuickActionData {
   });
 }
 
-class _QuickActionCard extends StatelessWidget {
+class _QuickActionCard
+    extends StatelessWidget {
   final _QuickActionData data;
 
   const _QuickActionCard({
@@ -128,39 +154,63 @@ class _QuickActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
+
       child: InkWell(
         onTap: data.onTap,
-        borderRadius: BorderRadius.circular(24),
+
+        borderRadius:
+            BorderRadius.circular(24),
+
         child: Ink(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: data.colors,
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
+              begin:
+                  Alignment.centerLeft,
+              end:
+                  Alignment.centerRight,
             ),
-            borderRadius: BorderRadius.circular(24),
+
+            borderRadius:
+                BorderRadius.circular(24),
+
             boxShadow: [
               BoxShadow(
-                color: data.colors.first.withOpacity(0.20),
+                color: data.colors.first
+                    .withOpacity(0.20),
                 blurRadius: 16,
-                offset: const Offset(0, 7),
+                offset:
+                    const Offset(0, 7),
               ),
             ],
           ),
+
           child: Padding(
-            padding: const EdgeInsets.all(18),
+            padding:
+                const EdgeInsets.all(18),
+
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+
               mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween,
+                  MainAxisAlignment
+                      .spaceBetween,
+
               children: [
                 Container(
                   width: 56,
                   height: 56,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
-                    shape: BoxShape.circle,
+
+                  decoration:
+                      BoxDecoration(
+                    color: Colors.white
+                        .withOpacity(0.18),
+
+                    shape:
+                        BoxShape.circle,
                   ),
+
                   child: Icon(
                     data.icon,
                     size: 30,
@@ -170,21 +220,36 @@ class _QuickActionCard extends StatelessWidget {
 
                 Column(
                   crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                      CrossAxisAlignment
+                          .start,
+
                   children: [
                     Text(
                       data.title,
-                      style: const TextStyle(
-                        color: Colors.white,
+
+                      style:
+                          const TextStyle(
+                        color:
+                            Colors.white,
                         fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                        fontWeight:
+                            FontWeight
+                                .bold,
                       ),
                     ),
-                    const SizedBox(height: 3),
+
+                    const SizedBox(
+                      height: 3,
+                    ),
+
                     Text(
                       data.subtitle,
+
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.88),
+                        color: Colors.white
+                            .withOpacity(
+                              0.88,
+                            ),
                         fontSize: 14,
                       ),
                     ),

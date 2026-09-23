@@ -5,6 +5,7 @@ import 'tutor_materials_page.dart';
 import 'students/assigned_students_page.dart';
 import 'tutor_assessments_page.dart';
 import 'feedback_page.dart';
+import 'tutor_courses_page.dart';
 
 // ============================================================
 // TUTOR DASHBOARD
@@ -22,28 +23,19 @@ class TutorDashboard extends StatefulWidget {
 
 class _TutorDashboardState
     extends State<TutorDashboard> {
-  // ==========================================================
-  // OPEN A TUTOR TAB AS A REAL PAGE
-  // ==========================================================
-  //
-  // Because Students / Materials / Assessments / Feedback
-  // are opened using Navigator.push(), Flutter automatically
-  // shows the back arrow in their existing AppBars.
-  //
-  // Back arrow -> Tutor Home
-  //
-  // ==========================================================
-
   void _openTab(int pageIndex) {
-    if (pageIndex < 1 || pageIndex > 4) {
+    if (pageIndex < 1 ||
+        pageIndex > 5) {
       return;
     }
 
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => _TutorTabPage(
-          initialIndex: pageIndex,
+        builder: (_) =>
+            _TutorTabPage(
+          initialIndex:
+              pageIndex,
         ),
       ),
     );
@@ -53,12 +45,10 @@ class _TutorDashboardState
   Widget build(BuildContext context) {
     const destinations = [
       NavigationDestination(
-        icon: Icon(
-          Icons.home_outlined,
-        ),
-        selectedIcon: Icon(
-          Icons.home_rounded,
-        ),
+        icon:
+            Icon(Icons.home_outlined),
+        selectedIcon:
+            Icon(Icons.home_rounded),
         label: "Home",
       ),
 
@@ -101,11 +91,17 @@ class _TutorDashboardState
         ),
         label: "Feedback",
       ),
-    ];
 
-    // ==========================================================
-    // HOME IS THE ROOT PAGE
-    // ==========================================================
+      NavigationDestination(
+        icon: Icon(
+          Icons.menu_book_outlined,
+        ),
+        selectedIcon: Icon(
+          Icons.menu_book_rounded,
+        ),
+        label: "Courses",
+      ),
+    ];
 
     return Scaffold(
       backgroundColor:
@@ -146,22 +142,7 @@ class _TutorDashboardState
 }
 
 // ============================================================
-// TUTOR SUB PAGE
-// ============================================================
-//
-// This is used for:
-// 1 -> Students
-// 2 -> Materials
-// 3 -> Assessments
-// 4 -> Feedback
-//
-// Since this widget is opened with Navigator.push(),
-// the AppBars inside these pages automatically display:
-//
-// ←
-//
-// Pressing that arrow pops this route and returns to Home.
-//
+// TUTOR TAB ROUTE
 // ============================================================
 
 class _TutorTabPage
@@ -188,21 +169,16 @@ class _TutorTabPageState
     index = widget.initialIndex;
   }
 
-  // ==========================================================
-  // BOTTOM NAVIGATION
-  // ==========================================================
-
   void _navigateToPage(
     int pageIndex,
   ) {
-    // Home
     if (pageIndex == 0) {
       Navigator.pop(context);
       return;
     }
 
     if (pageIndex < 1 ||
-        pageIndex > 4) {
+        pageIndex > 5) {
       return;
     }
 
@@ -214,8 +190,6 @@ class _TutorTabPageState
   @override
   Widget build(BuildContext context) {
     final pages = [
-      // Index 0 is never displayed here.
-      // Selecting Home pops this route.
       const SizedBox.shrink(),
 
       const AssignedStudentsPage(),
@@ -225,16 +199,16 @@ class _TutorTabPageState
       const TutorAssessmentsPage(),
 
       const FeedbackPage(),
+
+      const TutorCoursesPage(),
     ];
 
     const destinations = [
       NavigationDestination(
-        icon: Icon(
-          Icons.home_outlined,
-        ),
-        selectedIcon: Icon(
-          Icons.home_rounded,
-        ),
+        icon:
+            Icon(Icons.home_outlined),
+        selectedIcon:
+            Icon(Icons.home_rounded),
         label: "Home",
       ),
 
@@ -277,14 +251,22 @@ class _TutorTabPageState
         ),
         label: "Feedback",
       ),
+
+      NavigationDestination(
+        icon: Icon(
+          Icons.menu_book_outlined,
+        ),
+        selectedIcon: Icon(
+          Icons.menu_book_rounded,
+        ),
+        label: "Courses",
+      ),
     ];
 
     return Scaffold(
       backgroundColor:
           const Color(0xFFF7F8FC),
 
-      // IndexedStack keeps each Tutor tab alive
-      // while moving between tabs.
       body: IndexedStack(
         index: index,
         children: pages,
